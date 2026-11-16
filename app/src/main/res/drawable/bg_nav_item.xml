@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 하단 탭 한 칸의 배경.
+     selector: 상태(state)에 따라 다른 그림을 고르는 drawable. 위에서부터 차례로 검사해서 처음 맞는 것을 씀.
+     state_checked="true" = 지금 선택된 탭 → 연한 강조색으로 칸 전체를 칠함 (와이어프레임의 회색 칸)
+     그 외 = 투명 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true">
+        <shape android:shape="rectangle">
+            <!-- ?attr/... : 앱 테마(Material)에 정해진 색을 가져옴. 다크 모드에서는 자동으로 어두운 색 -->
+            <solid android:color="?attr/colorSecondaryContainer" />
+        </shape>
+    </item>
+    <item android:drawable="@android:color/transparent" />
+</selector>

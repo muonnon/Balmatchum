@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 하단 탭(BottomNavigationView)에 보여줄 탭 3개.
+     item 하나 = 탭 하나. id로 "어떤 탭을 눌렀는지" 구분하고, icon과 title은 탭에 보이는 아이콘과 글자.
+     순서대로 왼쪽 → 오른쪽에 배치됨 -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_walk"
+        android:icon="@drawable/ic_nav_walk"
+        android:title="걷기" />
+    <item
+        android:id="@+id/nav_records"
+        android:icon="@drawable/ic_nav_records"
+        android:title="기록" />
+    <item
+        android:id="@+id/nav_settings"
+        android:icon="@drawable/ic_nav_settings"
+        android:title="설정" />
+</menu>

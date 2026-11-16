@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 걷기 / 기록 / 설정 화면 맨 아래에 들어가는 공통 하단 탭.
+     <include layout="@layout/include_bottom_nav" />로 끼워 넣고, 동작은 NavHelper.setupBottomNav()에서 연결.
+     merge: include될 때 안의 뷰들만 부모에 바로 들어감 -->
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- 탭 위 구분선 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/colorOutlineVariant" />
+
+    <!-- BottomNavigationView: 하단 탭 위젯.
+         menu            : 탭 목록 (res/menu/bottom_nav.xml)
+         height/minHeight: 64dp (Material3 기본 높이 80dp를 와이어프레임 크기로 줄임. minHeight도 같이 줄여야 실제로 줄어듦)
+         itemIconSize    : 아이콘 20dp
+         itemPaddingTop/Bottom: 칸 위아래 여백. Material3 기본값은 80dp 높이에 맞춰져 있어서 64dp로 줄이면
+                           글자 아래가 잘림 → 여백도 10dp로 줄여서 아이콘+글자가 64dp 안에 들어가게 함
+         labelVisibilityMode="labeled": 모든 탭의 글자를 항상 보여줌 (기본값은 탭이 4개 이상이면 선택된 탭만 보임)
+         itemBackground  : 선택된 칸 전체를 연하게 칠하는 배경 (bg_nav_item.xml)
+         itemTextAppearanceActive/Inactive: 선택된 탭 글자는 굵게 -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:minHeight="64dp"
+        app:itemBackground="@drawable/bg_nav_item"
+        app:itemIconSize="20dp"
+        app:itemPaddingBottom="10dp"
+        app:itemPaddingTop="10dp"
+        app:itemTextAppearanceActive="@style/TextAppearance.Balmatchum.NavActive"
+        app:itemTextAppearanceInactive="@style/TextAppearance.Balmatchum.NavInactive"
+        app:labelVisibilityMode="labeled"
+        app:menu="@menu/bottom_nav" />
+</merge>

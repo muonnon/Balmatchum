@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 모든 화면 맨 위에 들어가는 공통 상단 바.
+     각 화면 레이아웃에서 <include layout="@layout/include_toolbar" />로 끼워 넣어 씀 → 같은 XML을 네 번 쓰지 않아도 됨.
+     제목과 뒤로가기 화살표는 화면마다 다르므로 자바 코드(NavHelper.setupToolbar)에서 정함.
+
+     merge: include할 때 이 바깥 태그는 없어지고 안의 뷰들만 부모(세로 LinearLayout)에 바로 들어감.
+     (불필요한 레이아웃 한 겹을 줄이는 방법) -->
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- MaterialToolbar: Material 디자인의 상단 바. 높이 56dp, 제목 글자 모양은 styles.xml의 20sp 굵게 -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        app:titleTextAppearance="@style/TextAppearance.Balmatchum.ToolbarTitle" />
+
+    <!-- 바 아래 얇은 구분선 (높이 1dp짜리 빈 View에 색만 칠함) -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/colorOutlineVariant" />
+</merge>

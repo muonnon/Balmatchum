@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 걷기 탭 아이콘 (걷는 사람). 벡터 아이콘: 점과 선의 좌표(pathData)로 그려서 어떤 크기로 늘려도 깨지지 않음.
+     viewport 24x24 좌표계에 그리고, width/height(24dp) 크기로 보여줌 (탭에서는 itemIconSize=20dp로 줄여 씀).
+     색은 fillColor가 아니라 하단 탭이 itemIconTint로 칠해 줌 (선택/미선택 색이 자동으로 달라짐) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M13.5,5.5c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM9.8,8.9L7,23h2.1l1.8,-8 2.1,2v6h2v-7.5l-2.1,-2 0.6,-3C14.8,12 16.8,13 19,13v-2c-1.9,0 -3.5,-1 -4.3,-2.4l-1,-1.6c-0.4,-0.6 -1,-1 -1.7,-1 -0.3,0 -0.5,0.1 -0.8,0.1L6,8.3V13h2V9.6l1.8,-0.7" />
+</vector>

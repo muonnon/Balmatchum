@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 여러 화면에서 같이 쓰는 글자 모양(TextAppearance) 모음.
+     한곳에 모아 두면 글자 크기를 바꿀 때 여기만 고치면 됨 -->
+<resources>
+    <!-- Toolbar 제목: 20sp 굵게 -->
+    <style name="TextAppearance.Balmatchum.ToolbarTitle" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textSize">20sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- 하단 탭 글자: 선택된 탭은 굵게, 나머지는 보통. 크기는 둘 다 13sp (크기가 다르면 탭을 바꿀 때 글자가 출렁임) -->
+    <style name="TextAppearance.Balmatchum.NavActive" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="TextAppearance.Balmatchum.NavInactive" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">normal</item>
+    </style>
+</resources>
