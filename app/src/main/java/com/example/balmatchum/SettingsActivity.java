@@ -19,7 +19,8 @@ import androidx.appcompat.widget.SwitchCompat;  // 켜기/끄기 스위치
  *
  * - 스케일(음계), 사운드 테마, 볼륨, 비트 켜기, 걷는 동안 화면 켜두기를 바꿔요.
  * - 저장 버튼은 없어요. 값을 바꾸는 즉시 SQLite의 settings 테이블에 저장돼요.
- * - 걷기 화면은 onResume()에서 이 값들을 다시 읽으므로, 이 화면에서 뒤로 가면 바로 반영돼요.
+ * - 걷기 화면은 onResume()에서 이 값들을 다시 읽으므로, 걷기 탭이나 뒤로가기로 돌아가면 바로 반영돼요.
+ * - 맨 위 상단 바와 맨 아래 하단 탭(설정 선택됨)은 NavHelper로 설정해요.
  *
  * 흐름: onCreate → 화면 요소 찾기 → showSettings()로 저장된 값 보여주기 → 리스너(값이 바뀌면 저장) 연결
  */
@@ -47,6 +48,10 @@ public class SettingsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_settings);
 
         dbHelper = new SongDbHelper(this);
+
+        // 공통 상단 바(제목만)와 하단 탭(지금 화면 = 설정). 값은 바꾸는 즉시 저장되므로 떠나기 전에 할 일은 없음(null)
+        NavHelper.setupToolbar(this, "설정 · 테마", false);
+        NavHelper.setupBottomNav(this, R.id.nav_settings, null);
 
         spScale = findViewById(R.id.spScale);
         rgTheme = findViewById(R.id.rgTheme);
