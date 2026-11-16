@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 걸음 곡 목록 화면
-     바깥 FrameLayout의 fitsSystemWindows: 화면이 상태바/내비게이션바 밑으로 들어가지 않도록 그만큼 여백을 준다.
-     주의: fitsSystemWindows는 그 뷰의 padding을 시스템 바 크기로 "덮어쓰기" 때문에,
-     같은 뷰에 padding="16dp"를 주면 무시된다. 그래서 여백(16dp)은 안쪽 LinearLayout에 따로 준다. -->
+<!-- 걸음 곡 기록(목록) 화면
+     구조: 바깥 FrameLayout(fitsSystemWindows) > 세로 LinearLayout = [상단 바] + [내용(여백 16dp)] + [하단 탭] -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -11,48 +9,86 @@
 <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:orientation="vertical">
 
-    <!-- 윗줄: 화면 제목 + 정렬 선택 -->
+    <!-- 1. 공통 상단 바 ("걸음 곡 기록") -->
+    <include layout="@layout/include_toolbar" />
+
+    <!-- 가운데 내용 (남는 높이 전부) -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="8dp">
 
-        <!-- layout_weight="1": 남는 가로 공간을 제목이 전부 차지 → 정렬 선택은 오른쪽 끝으로 밀림 -->
-        <TextView
-            android:layout_width="0dp"
+        <!-- 2. 윗줄: 왼쪽 "저장된 곡 N개" + 오른쪽 정렬 선택 -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="걸음 곡 목록"
-            android:textSize="22sp"
-            android:textStyle="bold" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-        <!-- Spinner: 누르면 목록이 펼쳐지는 선택 상자 (정렬 방식 선택) -->
-        <Spinner
-            android:id="@+id/spSort"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            <!-- weight=1: 남는 가로 공간을 차지 → 정렬 상자는 오른쪽 끝으로 밀림 -->
+            <TextView
+                android:id="@+id/tvCount"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="저장된 곡 0개"
+                android:textSize="14sp" />
+
+            <!-- 정렬 Spinner를 테두리 상자(bg_outline_box)로 감쌈 (와이어프레임의 "최신순 ▾" 상자) -->
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_outline_box">
+
+                <Spinner
+                    android:id="@+id/spSort"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp" />
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- 3. 곡 목록 (카드형). 남는 세로 공간을 전부 사용.
+             divider="@null" + dividerHeight="10dp": 구분선은 그리지 않고 카드 사이를 10dp 띄움
+             listSelector 투명: 누를 때 카드 바깥 사각형까지 칠해지는 기본 효과를 없앰 -->
+        <ListView
+            android:id="@+id/lvSongs"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="12dp"
+            android:layout_weight="1"
+            android:divider="@null"
+            android:dividerHeight="10dp"
+            android:listSelector="@android:color/transparent" />
+
+        <!-- 저장된 곡이 하나도 없을 때만 보이는 안내 문구 (ListView.setEmptyView로 연결) -->
+        <TextView
+            android:id="@+id/tvEmpty"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="아직 저장된 곡이 없어요.\n걷기를 마치면 여기에 곡이 생겨요."
+            android:visibility="gone" />
+
+        <!-- 4. 맨 아래 작은 안내 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="항목을 길게 누르면 삭제 확인 대화상자"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="12sp" />
     </LinearLayout>
 
-    <!-- 곡 목록. layout_height=0dp + weight=1 → 남은 세로 공간을 전부 사용 -->
-    <ListView
-        android:id="@+id/lvSongs"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="8dp" />
-
-    <!-- 저장된 곡이 하나도 없을 때만 보이는 안내 문구 (ListView.setEmptyView로 연결) -->
-    <TextView
-        android:id="@+id/tvEmpty"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center"
-        android:text="아직 저장된 곡이 없어요.\n걷기를 마치면 여기에 곡이 생겨요."
-        android:visibility="gone" />
+    <!-- 6. 공통 하단 탭 (기록 선택됨) -->
+    <include layout="@layout/include_bottom_nav" />
 </LinearLayout>
 </FrameLayout>

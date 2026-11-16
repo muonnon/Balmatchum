@@ -1,25 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 곡 목록의 한 줄(곡 하나)의 모양. 어댑터가 곡마다 이 레이아웃을 하나씩 만들어 채운다 -->
+<!-- 곡 목록의 카드 한 장(곡 하나). 어댑터가 곡마다 이 레이아웃을 하나씩 만들어 채운다.
+     가로 배치: [44dp 음표 아이콘] [제목·날짜·걸음 3줄 (남는 너비 전부)] ["보기"]
+     카드 사이 간격 10dp는 ListView의 dividerHeight로 줌 (activity_song_list.xml) -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:paddingTop="12dp"
-    android:paddingBottom="12dp">
+    android:background="@drawable/bg_tile"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="14dp">
 
-    <!-- 곡 제목 (예: "11/16 13:05의 걸음 곡") -->
-    <TextView
-        android:id="@+id/tvTitle"
-        android:layout_width="match_parent"
+    <!-- 왼쪽 아이콘 자리 (44dp 정사각형). padding 10dp → 안의 음표는 24dp 크기로 보임 -->
+    <ImageView
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:background="@drawable/bg_icon_box"
+        android:contentDescription="걸음 곡"
+        android:padding="10dp"
+        android:src="@drawable/ic_music_note" />
+
+    <!-- 가운데 3줄. width=0dp + weight=1 → 아이콘과 "보기"를 뺀 나머지 너비를 전부 사용 -->
+    <LinearLayout
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:textSize="17sp"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="8dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <!-- 곡 제목 (16sp 굵게). 너무 길면 한 줄에서 "…"로 자름 -->
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <!-- 날짜 · 걸은 시간 (예: "10/23 (금) 13:05 · 12분 30초") -->
+        <TextView
+            android:id="@+id/tvDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="12sp" />
+
+        <!-- 걸음 수 · 평균 BPM (예: "1,240걸음 · 평균 108 BPM") -->
+        <TextView
+            android:id="@+id/tvInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- 오른쪽 "보기". 카드 전체를 누르면 열리므로 따로 클릭 동작은 없는 표시용 글자 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="보기"
+        android:textSize="13sp"
         android:textStyle="bold" />
-
-    <!-- 곡 정보 (예: "걸음 120 · 평균 112 BPM · 3분 20초") -->
-    <TextView
-        android:id="@+id/tvInfo"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:textSize="14sp" />
 </LinearLayout>

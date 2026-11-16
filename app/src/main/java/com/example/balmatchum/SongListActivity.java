@@ -15,10 +15,15 @@ import android.widget.Toast;                    // 화면 아래에 잠깐 뜨�
 import androidx.appcompat.app.AlertDialog;      // "삭제할까요?" 같은 확인 창
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.text.SimpleDateFormat;              // 날짜를 "10/23 (금) 13:05" 같은 글자로 바꾸는 도구
+import java.util.Date;
+import java.util.Locale;
+
 /**
  * 걸음 곡 목록 화면.
  *
- * - DB(songs 테이블)에 저장된 곡을 ListView로 보여줘요.
+ * - DB(songs 테이블)에 저장된 곡을 카드 모양 ListView로 보여줘요. 위에는 "저장된 곡 N개"를 표시해요.
+ * - 맨 위 상단 바("걸음 곡 기록")와 맨 아래 하단 탭(기록 선택됨)은 NavHelper로 설정해요.
  * - 위쪽 선택 상자(Spinner)로 정렬 방식을 바꿀 수 있어요.
  * - 곡을 길게 누르면 삭제 확인 창이 뜨고, [삭제]를 누르면 지워져요.
  * - 곡을 짧게 누르면 곡 상세 화면(SongDetailActivity)이 열려요.
@@ -34,6 +39,11 @@ public class SongListActivity extends AppCompatActivity {
 
     private SongDbHelper dbHelper;          // DB 도우미
     private SimpleCursorAdapter adapter;    // DB 조회 결과(Cursor)를 ListView에 보여주는 어댑터
+    private TextView tvCount;               // "저장된 곡 N개"
+
+    // 카드 둘째 줄의 날짜 형식. 예) "10/23 (금) 13:05"  (E = 요일 한 글자, HH = 0~23시)
+    // 곡마다 new 하지 않도록 필드로 한 번만 만들어 둠
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("M/d (E) HH:mm", Locale.KOREA);
     private String currentOrder = SongDbHelper.SORT_NEWEST; // 지금 선택된 정렬 (처음엔 최신순)
 
     /**
@@ -46,34 +56,46 @@ public class SongListActivity extends AppCompatActivity {
 
         dbHelper = new SongDbHelper(this);
 
+        // 공통 상단 바(제목만)와 하단 탭(지금 화면 = 기록). 떠나기 전에 따로 할 일은 없어서 null
+        NavHelper.setupToolbar(this, "걸음 곡 기록", false);
+        NavHelper.setupBottomNav(this, R.id.nav_records, null);
+
+        tvCount = findViewById(R.id.tvCount);
+
         ListView lv = findViewById(R.id.lvSongs);
         // 목록이 비어 있으면 ListView 대신 tvEmpty("아직 저장된 곡이 없어요")를 자동으로 보여준다
         lv.setEmptyView(findViewById(R.id.tvEmpty));
 
         // ── 어댑터 만들기 ──
         // SimpleCursorAdapter(Context, 한 줄 레이아웃, Cursor, 가져올 열 이름들, 넣을 TextView id들, 옵션)
-        //   from[0]="title"   → to[0]=tvTitle 에 제목을 넣음
-        //   from[1]="steps"   → to[1]=tvInfo  (아래 ViewBinder에서 여러 열을 합쳐 직접 글자를 만듦)
+        //   from[0]="title"      → to[0]=tvTitle 에 제목을 그대로 넣음
+        //   from[1]="started_at" → to[1]=tvDate  (아래 ViewBinder에서 날짜 + 걸은 시간 글자를 직접 만듦)
+        //   from[2]="steps"      → to[2]=tvInfo  (아래 ViewBinder에서 걸음 수 + 평균 BPM 글자를 직접 만듦)
         // Cursor는 처음엔 null로 두고, loadSongs()에서 조회한 결과로 바꿔 끼운다.
         // 마지막 0: 자동 새로고침 기능(옛 방식)을 쓰지 않겠다는 뜻. 새로고침은 우리가 직접 한다.
         adapter = new SimpleCursorAdapter(this, R.layout.item_song, null,
-                new String[]{"title", "steps"},
-                new int[]{R.id.tvTitle, R.id.tvInfo}, 0);
+                new String[]{"title", "started_at", "steps"},
+                new int[]{R.id.tvTitle, R.id.tvDate, R.id.tvInfo}, 0);
 
         // ViewBinder: 열 값을 TextView에 넣기 직전에 끼어들어 "어떻게 보여줄지"를 직접 정하는 장치.
-        // tvInfo에는 걸음 수 하나가 아니라 "걸음 · 평균 BPM · 걸은 시간"을 합쳐서 보여주고 싶어서 사용.
+        // 여러 열을 합쳐 한 줄로 보여주고 싶어서 사용.
         adapter.setViewBinder((view, cursor, columnIndex) -> {
-            if (view.getId() != R.id.tvInfo) return false; // false = "제목은 기본 방식대로 넣어줘"
-
             // getColumnIndexOrThrow("열이름"): 그 열이 몇 번째 칸인지 찾기 (없으면 오류를 내서 실수를 바로 알 수 있음)
-            int steps = cursor.getInt(cursor.getColumnIndexOrThrow("steps"));
-            int avgBpm = cursor.getInt(cursor.getColumnIndexOrThrow("avg_bpm"));
-            int sec = cursor.getInt(cursor.getColumnIndexOrThrow("duration_sec"));
-
-            // 초를 "3분 20초"처럼 바꾸기. sec / 60 = 분, sec % 60 = 남은 초
-            String time = sec >= 60 ? (sec / 60) + "분 " + (sec % 60) + "초" : sec + "초";
-            ((TextView) view).setText("걸음 " + steps + " · 평균 " + avgBpm + " BPM · " + time);
-            return true;                                   // true = "내가 직접 넣었으니 기본 동작은 하지 마"
+            if (view.getId() == R.id.tvDate) {
+                long startedAt = cursor.getLong(cursor.getColumnIndexOrThrow("started_at"));
+                int sec = cursor.getInt(cursor.getColumnIndexOrThrow("duration_sec"));
+                // 예) "10/23 (금) 13:05 · 12분 30초"
+                ((TextView) view).setText(dateFormat.format(new Date(startedAt)) + " · " + formatDuration(sec));
+                return true;                               // true = "내가 직접 넣었으니 기본 동작은 하지 마"
+            }
+            if (view.getId() == R.id.tvInfo) {
+                int steps = cursor.getInt(cursor.getColumnIndexOrThrow("steps"));
+                int avgBpm = cursor.getInt(cursor.getColumnIndexOrThrow("avg_bpm"));
+                // %,d: 천 단위 쉼표 (1240 → "1,240"). 예) "1,240걸음 · 평균 108 BPM"
+                ((TextView) view).setText(String.format(Locale.KOREA, "%,d걸음 · 평균 %d BPM", steps, avgBpm));
+                return true;
+            }
+            return false;                                  // false = "제목은 기본 방식대로 넣어줘"
         });
         lv.setAdapter(adapter);
 
@@ -137,6 +159,17 @@ public class SongListActivity extends AppCompatActivity {
     private void loadSongs() {
         Cursor c = dbHelper.querySongs(currentOrder);
         adapter.changeCursor(c);
+        // getCount(): 조회 결과의 줄 수 = 저장된 곡 수
+        tvCount.setText("저장된 곡 " + c.getCount() + "개");
+    }
+
+    /**
+     * 초를 "N분 N초" 글자로 바꿔요. 1분 미만이면 "N초".
+     * 예) 750 → "12분 30초", 45 → "45초"
+     * sec / 60 = 분, sec % 60 = 남은 초
+     */
+    private static String formatDuration(int sec) {
+        return sec >= 60 ? (sec / 60) + "분 " + (sec % 60) + "초" : sec + "초";
     }
 
     /**
