@@ -15,13 +15,7 @@ import android.widget.TextView;                // 글자를 보여주는 화면 
 import android.widget.Button;                  // 버튼 화면 요소
 import android.widget.Toast;                   // 화면 아래에 잠깐 뜨는 짧은 메시지
 
-// 아래 4개는 프로젝트를 처음 만들 때 자동으로 들어간 import로, 지금 코드에서는 쓰이지 않아요.
-// (지워도 동작은 같지만, "코드 동작을 바꾸지 않기"를 위해 그대로 둠)
-import androidx.activity.EdgeToEdge;
-import androidx.appcompat.app.AppCompatActivity; // ← 이건 사용 중: 화면(Activity)의 기본 부모 클래스
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+import androidx.appcompat.app.AppCompatActivity; // 화면(Activity)의 기본 부모 클래스
 
 import java.util.ArrayDeque;                   // 앞/뒤 양쪽에서 넣고 뺄 수 있는 목록(큐)
 
