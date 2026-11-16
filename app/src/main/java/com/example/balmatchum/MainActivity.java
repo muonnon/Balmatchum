@@ -88,6 +88,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // 버튼 하나로 시작/정지를 번갈아 처리: 걷는 중이면 정지, 아니면 시작
         btnStart.setOnClickListener(v -> { if (walking) stopWalk(); else startWalk(); });
 
+        // "기록 보기" 버튼: 곡 목록 화면(SongListActivity)을 연다.
+        // Intent = "어떤 화면을 열고 싶다"는 요청서. (지금 화면, 열 화면의 클래스)를 적어 startActivity로 보낸다.
+        // 걷는 중에 다른 화면으로 가면 onPause에서 음악이 멈추므로, 먼저 걷기를 정지(저장)한 뒤 이동한다.
+        findViewById(R.id.btnList).setOnClickListener(v -> {
+            if (walking) stopWalk();
+            startActivity(new android.content.Intent(this, SongListActivity.class));
+        });
+
         // 음악 엔진 생성. this(= 이 화면)를 넘기는 이유는 res/raw 소리 파일을 읽으려면 Context가 필요해서
         engine = new MusicEngine(this);
         dbHelper = new SongDbHelper(this); // DB 도우미 생성 (DB 파일은 처음 쓸 때 만들어진다)

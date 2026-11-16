@@ -21,6 +21,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- 걸음 곡 목록 화면. 앱 안에서만 여는 화면이라 exported="false" (다른 앱이 직접 열 수 없음) -->
+        <activity
+            android:name=".SongListActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

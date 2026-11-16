@@ -2,6 +2,7 @@ package com.example.balmatchum;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
@@ -56,5 +57,39 @@ public class SongDbHelper extends SQLiteOpenHelper {
 
         SQLiteDatabase db = getWritableDatabase(); // 쓰기 가능한 DB를 연다
         return db.insert(TABLE, null, values);     // songs 테이블에 한 줄 추가
+    }
+
+    // ───────────── 정렬 방식 ─────────────
+    // 정렬 순서를 SQL 문장 조각("started_at DESC" 등)으로 미리 정해 둔다.
+    // 사용자가 입력한 글자를 그대로 SQL에 넣으면 위험하므로(SQL 인젝션), 이 중 하나만 쓰게 한다.
+    // DESC = 큰 값부터(내림차순), ASC = 작은 값부터(오름차순)
+    public static final String SORT_NEWEST = "started_at DESC"; // 최신순
+    public static final String SORT_OLDEST = "started_at ASC";  // 오래된순
+    public static final String SORT_BPM    = "avg_bpm DESC";    // 평균 BPM 높은순
+    public static final String SORT_STEPS  = "steps DESC";      // 걸음 많은순
+
+    /**
+     * 저장된 곡 전체를 정해진 순서로 가져온다.
+     * Cursor는 "조회 결과 표를 한 줄씩 읽을 수 있는 손가락" 같은 객체다.
+     * 다 쓴 Cursor는 꼭 close() 해야 메모리가 새지 않는다. (목록 화면에서는 어댑터가 대신 관리)
+     *
+     * @param orderBy 위의 SORT_ 상수 중 하나
+     */
+    public Cursor querySongs(String orderBy) {
+        SQLiteDatabase db = getReadableDatabase(); // 읽기용 DB를 연다
+        // query(테이블, 가져올 열(null=전부), 조건, 조건값, 그룹, 그룹조건, 정렬)
+        // 조건이 null이면 모든 줄을 가져온다.
+        return db.query(TABLE, null, null, null, null, null, orderBy);
+    }
+
+    /**
+     * _id가 id인 곡 하나를 지운다.
+     * "_id = ?" 의 ?에는 두 번째 배열의 값이 안전하게 들어간다. (값을 SQL 문장에 직접 이어 붙이지 않기 위해)
+     *
+     * @return 지워진 줄 수 (성공하면 1, 해당 곡이 없으면 0)
+     */
+    public int deleteSong(long id) {
+        SQLiteDatabase db = getWritableDatabase();
+        return db.delete(TABLE, "_id = ?", new String[]{String.valueOf(id)});
     }
 }

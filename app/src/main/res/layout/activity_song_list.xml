@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 걸음 곡 목록 화면
+     바깥 FrameLayout의 fitsSystemWindows: 화면이 상태바/내비게이션바 밑으로 들어가지 않도록 그만큼 여백을 준다.
+     주의: fitsSystemWindows는 그 뷰의 padding을 시스템 바 크기로 "덮어쓰기" 때문에,
+     같은 뷰에 padding="16dp"를 주면 무시된다. 그래서 여백(16dp)은 안쪽 LinearLayout에 따로 준다. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- 윗줄: 화면 제목 + 정렬 선택 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <!-- layout_weight="1": 남는 가로 공간을 제목이 전부 차지 → 정렬 선택은 오른쪽 끝으로 밀림 -->
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="걸음 곡 목록"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <!-- Spinner: 누르면 목록이 펼쳐지는 선택 상자 (정렬 방식 선택) -->
+        <Spinner
+            android:id="@+id/spSort"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+
+    <!-- 곡 목록. layout_height=0dp + weight=1 → 남은 세로 공간을 전부 사용 -->
+    <ListView
+        android:id="@+id/lvSongs"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp" />
+
+    <!-- 저장된 곡이 하나도 없을 때만 보이는 안내 문구 (ListView.setEmptyView로 연결) -->
+    <TextView
+        android:id="@+id/tvEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:text="아직 저장된 곡이 없어요.\n걷기를 마치면 여기에 곡이 생겨요."
+        android:visibility="gone" />
+</LinearLayout>
+</FrameLayout>

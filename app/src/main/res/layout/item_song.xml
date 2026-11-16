@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 곡 목록의 한 줄(곡 하나)의 모양. 어댑터가 곡마다 이 레이아웃을 하나씩 만들어 채운다 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp">
+
+    <!-- 곡 제목 (예: "11/16 13:05의 걸음 곡") -->
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="17sp"
+        android:textStyle="bold" />
+
+    <!-- 곡 정보 (예: "걸음 120 · 평균 112 BPM · 3분 20초") -->
+    <TextView
+        android:id="@+id/tvInfo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:textSize="14sp" />
+</LinearLayout>
