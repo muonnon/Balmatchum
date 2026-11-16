@@ -15,7 +15,8 @@ import java.util.Random;            // 무작위 숫자를 만드는 도구 (시
  *      · 킥(쿵)    : 4칸마다 = 매 박의 첫 칸
  *      · 하이햇(츳): 4칸 중 3번째 칸 = 박과 박 사이(엇박)
  *      · 멜로디    : 2칸마다 = 8분음표마다, 펜타토닉 음계 안에서 한 칸 위/아래/제자리로 무작위 이동
- *  - 음높이는 note.wav 하나를 빠르게/느리게 재생해서 바꿔요. (빠르게 재생하면 음이 높아짐)
+ *  - 음높이는 멜로디 소리 파일 하나를 빠르게/느리게 재생해서 바꿔요. (빠르게 재생하면 음이 높아짐)
+ *  - applySettings()로 음계(스케일), 사운드 테마(8bit/Lo-fi/피아노), 볼륨, 비트 켜기/끄기를 정해요.
  *
  * 두 가지 모드가 있어요.
  *  1) 실시간 모드 (걷기 화면): 걸음이 들어올 때마다 화면이 setBpm()으로 박자를 바꿔 줘요.
@@ -32,9 +33,33 @@ public class MusicEngine {
     // 펜타토닉(5음) 음계를 "기본음에서 몇 반음 위인지"로 적은 표. (도 레 미 솔 라 + 높은 도)
     // 반음: 피아노 건반 한 칸(흰 건반, 검은 건반 포함). 12반음 = 한 옥타브
     // static final: 모든 MusicEngine이 같이 쓰는, 절대 바뀌지 않는 상수
-    private static final int[] SCALE = {0, 2, 4, 7, 9, 12};   // 펜타토닉 (반음 수)
+    //
+    // 스케일(음계) 3종. 바깥 배열의 칸 번호가 곧 scale_id (DB와 설정에 저장되는 번호)예요.
+    //   0 = 펜타토닉        : 도 레 미 솔 라 도     → 밝고 어디서 멈춰도 자연스러움
+    //   1 = 마이너 펜타토닉 : 도 미♭ 파 솔 시♭ 도   → 조금 어둡고 블루스 느낌
+    //   2 = 장음계          : 도 레 미 파 솔 라 시 도 → 학교에서 배우는 익숙한 음계
+    // 모든 스케일의 가장 높은 음은 12반음(한 옥타브 위 도) 이하여야 해요.
+    // 이유: 음높이를 SoundPool의 재생 속도로 만드는데, 재생 속도는 최대 2.0배까지만 돼요. (12반음 = 정확히 2.0배)
+    // 주의: 배열 순서를 바꾸면 이미 저장된 곡의 scale_id가 다른 음계를 가리키게 되므로, 새 음계는 뒤에만 추가해요.
+    private static final int[][] SCALES = {
+            {0, 2, 4, 7, 9, 12},         // 펜타토닉 (기존에 쓰던 음계 그대로)
+            {0, 3, 5, 7, 10, 12},        // 마이너 펜타토닉
+            {0, 2, 4, 5, 7, 9, 11, 12},  // 장음계
+    };
+    /** 화면(설정, 곡 상세)에 보여줄 스케일 이름. SCALES와 같은 순서 */
+    public static final String[] SCALE_NAMES = {"펜타토닉", "마이너 펜타토닉", "장음계"};
 
-    private static final int START_DEGREE = 2;               // 멜로디의 첫 음 위치 (SCALE의 2번 칸 = 미)
+    /** 화면에 보여줄 사운드 테마 이름. 칸 번호가 곧 theme_id */
+    public static final String[] THEME_NAMES = {"8bit", "Lo-fi", "피아노"};
+
+    // 테마별 소리 파일. [테마 번호][0=멜로디, 1=킥, 2=하이햇]
+    // R.raw.xxx 는 res/raw/xxx.wav 파일을 가리키는 번호(안드로이드가 자동으로 만들어 줌)
+    private static final int[][] THEME_RES = {
+            {R.raw.note, R.raw.kick, R.raw.hat},                   // 0 = 8bit
+            {R.raw.lofi_note, R.raw.lofi_kick, R.raw.lofi_hat},    // 1 = Lo-fi
+            {R.raw.piano_note, R.raw.piano_kick, R.raw.piano_hat}, // 2 = 피아노
+    };
+    private static final int SOUND_COUNT = 9;                // 불러올 소리 파일 개수 (테마 3개 × 3개)
 
     // 1분(60초)을 나노초로 쓴 값. 1초 = 10억(1_000_000_000) 나노초
     // (숫자 사이 _ 는 읽기 쉽게 쓴 것으로 값에는 영향 없음, 끝의 L은 long 타입이라는 뜻)
@@ -49,14 +74,22 @@ public class MusicEngine {
     private final SoundPool pool;      // 소리들을 담아 두고 재생하는 SoundPool
 
     // SoundPool에 불러온 소리 각각의 번호(ID). 재생할 때 이 번호로 "어떤 소리"인지 알려줘요.
-    private final int note, kick, hat;
+    // [테마 번호][0=멜로디, 1=킥, 2=하이햇] 순서로 9개를 담아 둬요.
+    private final int[][] soundIds = new int[3][3];
+
+    // ─────────── 소리 설정 (applySettings로 바꿈) ───────────
+    // 화면 스레드가 바꾸고 음악 스레드가 읽으므로 volatile
+    private volatile int[] scale = SCALES[0];    // 지금 쓰는 음계 (반음 배열)
+    private volatile int themeId = 0;            // 지금 쓰는 사운드 테마 번호
+    private volatile float volume = 0.7f;        // 전체 볼륨 (0.0 ~ 1.0). 모든 play()의 볼륨에 곱해요
+    private volatile boolean beatOn = true;      // false면 킥·하이햇을 내지 않고 멜로디만
 
     // volatile: 여러 스레드가 함께 읽고 쓰는 변수에 붙여요.
     // 화면 스레드가 값을 바꾸면(setBpm, stop), 음악 스레드가 바로 바뀐 값을 보게 해줘요.
     // 안 붙이면 음악 스레드가 예전 값을 계속 보고 있을 수 있어요.
     private volatile int bpm = 100;              // 현재 박자 (1분당 박 수). 처음엔 100
     private volatile boolean running = false;    // 음악 스레드가 돌고 있는지. false가 되면 스레드가 반복을 멈춤
-    private volatile int loadedCount = 0;        // 불러오기가 끝난 소리 개수 (3개가 되면 재생 준비 완료)
+    private volatile int loadedCount = 0;        // 불러오기가 끝난 소리 개수 (9개가 되면 재생 준비 완료)
 
     private Thread thread;                       // 박자를 진행하는 음악 스레드
 
@@ -64,7 +97,7 @@ public class MusicEngine {
     // 아래 값들은 "지금 곡의 어디쯤을 연주하고 있는지"를 나타내요.
     // 스레드 밖(필드)에 두는 이유: 일시정지 후 다시 start()해도 멈춘 곳부터 이어서 연주하려고.
     private int step = 0;                        // 지금 몇 번째 칸인지 (0~15, 16칸 = 4박 = 1마디)
-    private int degree = START_DEGREE;           // 현재 음 위치 (SCALE 배열의 칸 번호)
+    private int degree = startDegree(SCALES[0]); // 현재 음 위치 (scale 배열의 칸 번호)
 
     // 멜로디를 고를 때 쓰는 난수 생성기.
     // Math.random()은 매번 결과가 달라서 같은 멜로디를 다시 만들 수 없어요.
@@ -103,12 +136,17 @@ public class MusicEngine {
 
         // load(Context, 리소스, 우선순위): 소리 파일을 불러오고, 그 소리의 번호를 돌려줌
         // 마지막 1은 우선순위인데, 현재 안드로이드에서는 효과가 없어 관례적으로 1을 넣어요.
-        note = pool.load(c, R.raw.note, 1);   // 멜로디용 기본음
-        kick = pool.load(c, R.raw.kick, 1);   // 킥 드럼 (쿵)
-        hat  = pool.load(c, R.raw.hat, 1);    // 하이햇 (츳)
+        // 테마 3개 × 소리 3개 = 9개를 모두 미리 불러와요.
+        // 재생 중에 테마를 바꿔도 바로 다른 소리를 낼 수 있게, 쓸 테마만이 아니라 전부 불러 둬요.
+        // (소리 파일이 작아서 9개를 다 불러도 메모리 부담이 크지 않음)
+        for (int t = 0; t < THEME_RES.length; t++) {           // t = 테마 번호
+            for (int k = 0; k < 3; k++) {                       // k = 0 멜로디, 1 킥, 2 하이햇
+                soundIds[t][k] = pool.load(c, THEME_RES[t][k], 1);
+            }
+        }
 
         // 소리 불러오기가 끝날 때마다 호출돼요. (load()는 바로 끝나지 않고 뒤에서 천천히 불러옴)
-        // status가 0이면 성공 → 성공한 개수를 세어 3개가 되면 isReady()가 true가 돼요.
+        // status가 0이면 성공 → 성공한 개수를 세어 9개가 되면 isReady()가 true가 돼요.
         // Logcat에서 태그 "BAL"로 검색하면 볼 수 있어요.
         pool.setOnLoadCompleteListener((p, id, status) -> {
             if (status == 0) loadedCount++;
@@ -117,10 +155,41 @@ public class MusicEngine {
     }
 
     /**
-     * 소리 3개를 모두 불러왔는지 알려줘요.
+     * 소리 9개를 모두 불러왔는지 알려줘요.
      * 불러오기 전에 재생하면 첫 몇 음이 소리 없이 지나가므로, 재생 버튼에서 확인하는 데 써요.
      */
-    public boolean isReady() { return loadedCount >= 3; }
+    public boolean isReady() { return loadedCount >= SOUND_COUNT; }
+
+    /**
+     * 음계에 맞는 멜로디 시작 위치를 계산해요. 음계의 가운데쯤에서 시작해야 위/아래로 고르게 움직여요.
+     * (길이 - 1) / 2 를 쓰는 이유:
+     *  - 펜타토닉(6칸)이면 (6-1)/2 = 2 → 예전에 쓰던 시작 위치(2 = 미)와 같아서, 이미 저장된 곡의 멜로디가 그대로예요.
+     *  - 장음계(8칸)면 (8-1)/2 = 3 (= 파). 어떤 길이든 결과가 0 ~ 길이-1 안이라 배열 범위를 벗어나지 않아요.
+     */
+    private static int startDegree(int[] s) { return (s.length - 1) / 2; }
+
+    /**
+     * 소리 설정을 바꿔요. 재생 중에 불러도 다음 칸부터 바로 반영돼요.
+     * 잘못된 번호가 들어와도 앱이 죽지 않도록 범위 안으로 맞춰요.
+     *
+     * @param scaleId       음계 번호 (0 펜타토닉, 1 마이너 펜타토닉, 2 장음계)
+     * @param themeId       사운드 테마 번호 (0 8bit, 1 Lo-fi, 2 피아노)
+     * @param volumePercent 볼륨 0 ~ 100 (%)
+     * @param beatOn        true면 킥·하이햇도 재생, false면 멜로디만
+     */
+    public void applySettings(int scaleId, int themeId, int volumePercent, boolean beatOn) {
+        int[] newScale = SCALES[clamp(scaleId, 0, SCALES.length - 1)];
+        // 음계가 바뀌어 칸 수가 줄면(장음계 8칸 → 펜타토닉 6칸) 지금 음 위치가 범위를 벗어날 수 있어서 맞춰 줌
+        // (같은 음계를 다시 넣을 때는 아무 변화 없음 → 다시 듣기 재현에는 영향 없음)
+        if (newScale != scale) degree = clamp(degree, 0, newScale.length - 1);
+        this.scale = newScale;
+        this.themeId = clamp(themeId, 0, THEME_RES.length - 1);
+        this.volume = clamp(volumePercent, 0, 100) / 100f;   // 70 → 0.7 (100f로 나눠야 소수점이 남음)
+        this.beatOn = beatOn;
+    }
+
+    /** v를 min ~ max 범위 안으로 맞춰요. 예) clamp(5, 0, 2) → 2 */
+    private static int clamp(int v, int min, int max) { return Math.max(min, Math.min(max, v)); }
 
     /**
      * 박자(BPM)를 바꿔요. 재생 중에 바꿔도 다음 칸부터 바로 반영돼요.
@@ -217,7 +286,7 @@ public class MusicEngine {
      */
     private void resetPosition() {
         random = new Random(seed);
-        degree = START_DEGREE;
+        degree = startDegree(scale);   // 지금 음계의 가운데쯤에서 출발
         step = 0;
         seriesIndex = 0;
         positionNs = 0;
@@ -299,12 +368,21 @@ public class MusicEngine {
 
         // play(소리번호, 왼쪽볼륨, 오른쪽볼륨, 우선순위, 반복횟수, 재생속도)
         //   볼륨: 0.0 ~ 1.0 / 반복 0 = 한 번만 / 재생속도 1f = 원래 속도
+        // 모든 볼륨에 전체 볼륨(volume)을 곱해요. 예) 하이햇 0.6 × 볼륨 0.7 = 0.42
+        // 필드를 지역 변수에 한 번 복사해 두는 이유: 이번 칸을 연주하는 도중에 화면이 설정을 바꿔도
+        // 한 칸 안에서는 같은 테마·볼륨으로 일관되게 연주하려고
+        int[] ids = soundIds[themeId];      // 지금 테마의 [멜로디, 킥, 하이햇] 소리 번호
+        int[] sc = scale;                   // 지금 음계
+        float vol = volume;
 
-        // 칸 0, 4, 8, 12 (4로 나눈 나머지가 0) → 매 박의 시작에 킥
-        if (sound && step % 4 == 0) pool.play(kick, 1, 1, 1, 0, 1f);        // 1,2,3,4박
-
-        // 칸 2, 6, 10, 14 → 박과 박 사이(엇박)에 하이햇. 킥보다 조금 작게(0.6)
-        if (sound && step % 4 == 2) pool.play(hat, 0.6f, 0.6f, 1, 0, 1f);   // 엇박
+        // 비트(드럼)가 켜져 있을 때만 킥·하이햇을 냄.
+        // 비트를 꺼도 아래 멜로디 부분은 그대로 실행되므로 Random 순서(= 멜로디)는 바뀌지 않아요.
+        if (sound && beatOn) {
+            // 칸 0, 4, 8, 12 (4로 나눈 나머지가 0) → 매 박의 시작에 킥
+            if (step % 4 == 0) pool.play(ids[1], vol, vol, 1, 0, 1f);                 // 1,2,3,4박
+            // 칸 2, 6, 10, 14 → 박과 박 사이(엇박)에 하이햇. 킥보다 조금 작게(0.6)
+            if (step % 4 == 2) pool.play(ids[2], 0.6f * vol, 0.6f * vol, 1, 0, 1f);  // 엇박
+        }
 
         // 짝수 칸(0, 2, 4, …) → 8분음표마다 멜로디 한 음
         // 주의: 소리를 안 낼 때(sound=false)도 무작위 값은 꼭 뽑아야 해요.
@@ -312,8 +390,8 @@ public class MusicEngine {
         if (step % 2 == 0) {
             // random.nextInt(3)은 0, 1, 2 중 하나 → -1 하면 -1, 0, +1
             // 즉 음계에서 한 칸 내려가기 / 그대로 / 한 칸 올라가기 중 하나를 무작위로 고름
-            // 바깥의 Math.max/min은 degree가 배열 범위(0 ~ SCALE.length-1)를 벗어나지 않게 막아줌
-            degree = Math.max(0, Math.min(SCALE.length - 1,
+            // 바깥의 Math.max/min은 degree가 배열 범위(0 ~ sc.length-1)를 벗어나지 않게 막아줌
+            degree = Math.max(0, Math.min(sc.length - 1,
                     degree + random.nextInt(3) - 1));               // -1, 0, +1
 
             // 멜로디 요약값 갱신: 이전 값 × 31 + 이번 음. (문자열 hashCode와 같은 방식)
@@ -328,8 +406,8 @@ public class MusicEngine {
                 // 반음 수를 재생 속도로 바꾸기: 속도 = 2^(반음/12)
                 // 예) 0반음 → 1.0배(원래 음), 12반음 → 2.0배(한 옥타브 위)
                 // 소리를 2배 빠르게 재생하면 한 옥타브 높게 들리는 원리를 이용
-                float rate = (float) Math.pow(2, SCALE[degree] / 12.0);
-                pool.play(note, 0.8f, 0.8f, 1, 0, rate);
+                float rate = (float) Math.pow(2, sc[degree] / 12.0);
+                pool.play(ids[0], 0.8f * vol, 0.8f * vol, 1, 0, rate);
             }
         }
 
