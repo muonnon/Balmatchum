@@ -13,6 +13,7 @@ import android.os.Bundle;                      // 화면이 다시 만들어질 
 import android.os.SystemClock;                 // 부팅 후 흐른 시간(ms)을 재는 시계
 import android.widget.TextView;                // 글자를 보여주는 화면 요소
 import android.widget.Button;                  // 버튼 화면 요소
+import android.view.WindowManager;             // 화면 켜두기 표시(FLAG_KEEP_SCREEN_ON)가 들어 있는 클래스
 import android.widget.Toast;                   // 화면 아래에 잠깐 뜨는 짧은 메시지
 
 import androidx.appcompat.app.AppCompatActivity; // 화면(Activity)의 기본 부모 클래스
@@ -60,6 +61,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private long seed;                                   // 이번 걷기의 멜로디 시드
     private long startWallMs;                            // 걷기 시작 시각 (실제 시계, 날짜 표시용)
     private final StringBuilder bpmSeries = new StringBuilder(); // 걸음마다의 BPM을 "112,113,..."로 쌓는다
+
+    // 지금 적용된 소리 설정 (onResume에서 DB의 settings 테이블을 읽어 채움)
+    // 곡을 저장할 때 이 값들을 곡에 함께 저장해야 다시 듣기가 같은 소리로 재생된다.
+    private int scaleId, themeId;
+    private boolean beatOn;
+    private boolean keepScreenOn;      // 걷는 동안 화면 켜두기
 
     // ───────────────────────────── 생명주기 메서드 ─────────────────────────────
     // 안드로이드는 화면 상태가 바뀔 때마다 정해진 메서드를 자동으로 불러줘요.
@@ -123,6 +130,21 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // 센서가 있는 기기에서만 등록. this = 이 화면이 신호를 받겠다 (onSensorChanged가 불림)
         // SENSOR_DELAY_FASTEST: 가능한 한 빨리 신호를 전달받기 (박자 계산이 늦지 않도록)
         if (stepSensor != null) sm.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_FASTEST);
+        applySettings();
+    }
+
+    /**
+     * DB에 저장된 설정을 읽어 음악 엔진에 적용해요.
+     * onResume에서 부르는 이유: 설정 화면에서 값을 바꾸고 돌아오면 onResume이 다시 불리므로
+     * 바뀐 설정이 바로 반영돼요. (onCreate에서만 읽으면 앱을 껐다 켜야 반영됨)
+     */
+    private void applySettings() {
+        scaleId = dbHelper.getIntSetting(SongDbHelper.KEY_SCALE, SongDbHelper.DEFAULT_SCALE);
+        themeId = dbHelper.getIntSetting(SongDbHelper.KEY_THEME, SongDbHelper.DEFAULT_THEME);
+        beatOn = dbHelper.getBoolSetting(SongDbHelper.KEY_BEAT, SongDbHelper.DEFAULT_BEAT);
+        keepScreenOn = dbHelper.getBoolSetting(SongDbHelper.KEY_KEEP_SCREEN, SongDbHelper.DEFAULT_KEEP_SCREEN);
+        int volume = dbHelper.getIntSetting(SongDbHelper.KEY_VOLUME, SongDbHelper.DEFAULT_VOLUME);
+        engine.applySettings(scaleId, themeId, volume, beatOn);
     }
 
     /**
@@ -170,6 +192,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         seed = startWallMs;                       // 시작 시각을 시드로 쓰면 곡마다 다른 값이 된다
         engine.setSeed(seed);                     // 엔진이 이 시드로 멜로디를 만들게 한다 (저장한 시드로 같은 곡을 다시 만들 수 있게)
         bpmSeries.setLength(0);                   // 이전 걷기의 BPM 기록 비우기
+        // "화면 켜두기"가 켜져 있으면 걷는 동안 화면이 꺼지지 않게 함
+        // FLAG_KEEP_SCREEN_ON: 이 화면이 보이는 동안 자동으로 화면이 꺼지는 것을 막는 표시(권한 필요 없음)
+        if (keepScreenOn) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         tvSteps.setText("걸음 수 0");
         tvBpm.setText("0");
         btnStart.setText("정지");                     // 같은 버튼을 이제 "정지" 버튼으로 사용
@@ -183,6 +208,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         walking = false;                             // 이제부터 걸음 신호 무시
         engine.stop();
         btnStart.setText("시작");
+        // 화면 켜두기 해제 → 다시 평소처럼 일정 시간이 지나면 화면이 꺼짐
+        // (켜 두지 않았던 경우에도 clearFlags는 아무 문제 없이 그냥 넘어감)
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         // 걸은 시간(초) = (지금 시각 - 시작 시각) / 1000   (ms → 초)
         long sec = (SystemClock.elapsedRealtime() - startMs) / 1000;
@@ -196,7 +224,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if (bpmCount > 0) {
             String title = new SimpleDateFormat("M/d HH:mm", Locale.KOREA)
                     .format(new Date(startWallMs)) + "의 걸음 곡";   // 예: "11/16 13:05의 걸음 곡"
-            long id = dbHelper.insertSong(title, startWallMs, (int) sec, steps, avg, seed, bpmSeries.toString());
+            // 마지막 세 값: 걸을 때 쓰던 스케일, 테마, 비트 설정 (다시 듣기에서 같은 소리로 재생하려고)
+            long id = dbHelper.insertSong(title, startWallMs, (int) sec, steps, avg, seed, bpmSeries.toString(),
+                    scaleId, themeId, beatOn);
             // insert는 실패하면 -1을 돌려준다. 실패를 모르고 넘어가지 않도록 Logcat에 남긴다.
             if (id == -1) android.util.Log.e("BAL", "곡 저장 실패: " + title);
         }
