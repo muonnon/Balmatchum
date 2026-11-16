@@ -40,6 +40,12 @@ public class MusicEngine {
     private Thread thread;                       // 박자를 진행하는 음악 스레드
     private int degree = 2;                                    // 현재 음 위치 (SCALE 배열의 칸 번호, 2 = 미)
 
+    // 멜로디를 고를 때 쓰는 난수 생성기.
+    // Math.random()은 매번 결과가 달라서 같은 멜로디를 다시 만들 수 없어요.
+    // Random에 같은 시드(seed)를 넣으면 항상 같은 순서로 숫자가 나오므로, 저장한 시드로 멜로디를 재현할 수 있어요.
+    // volatile: 화면 스레드에서 setSeed()로 바꾸고 음악 스레드에서 읽기 때문에 붙여요.
+    private volatile java.util.Random random = new java.util.Random();
+
     /**
      * 엔진을 만들 때 소리 파일 3개를 SoundPool에 미리 불러와요.
      * 미리 불러 두면 재생할 때 지연이 거의 없어요.
@@ -70,6 +76,18 @@ public class MusicEngine {
      *   Math.max(50, …)  → 50보다 작으면 50으로
      */
     public void setBpm(int b) { bpm = Math.max(50, Math.min(200, b)); }
+
+    /**
+     * 멜로디의 무작위 시드를 정해요. 걷기를 시작할 때(음악이 멈춰 있을 때) 호출해요.
+     * 같은 시드를 넣으면 멜로디가 같은 순서로 위/아래로 움직여서 같은 곡을 다시 만들 수 있어요.
+     * 시작 음 위치(degree)도 처음 값(2 = 미)으로 되돌려야 매번 같은 곳에서 출발해요.
+     *
+     * @param seed 이번 곡의 시드 (DB의 seed 열에 저장되는 값)
+     */
+    public void setSeed(long seed) {
+        random = new java.util.Random(seed);
+        degree = 2;
+    }
 
     /**
      * 음악 재생을 시작해요.
@@ -103,11 +121,12 @@ public class MusicEngine {
 
                 // 짝수 칸(0, 2, 4, …) → 8분음표마다 멜로디 한 음
                 if (step % 2 == 0) {                                        // 8분음표마다 멜로디
-                    // Math.random()은 0 이상 1 미만 → ×3 하면 0~2.999 → (int)로 0,1,2 → -1 하면 -1, 0, +1
+                    // random.nextInt(3)은 0, 1, 2 중 하나 → -1 하면 -1, 0, +1
                     // 즉 음계에서 한 칸 내려가기 / 그대로 / 한 칸 올라가기 중 하나를 무작위로 고름
+                    // (Math.random() 대신 시드를 넣은 random을 써야 같은 시드로 같은 멜로디가 나와요)
                     // 바깥의 Math.max/min은 degree가 배열 범위(0 ~ SCALE.length-1)를 벗어나지 않게 막아줌
                     degree = Math.max(0, Math.min(SCALE.length - 1,
-                            degree + (int) (Math.random() * 3) - 1));       // -1, 0, +1
+                            degree + random.nextInt(3) - 1));               // -1, 0, +1
 
                     // 반음 수를 재생 속도로 바꾸기: 속도 = 2^(반음/12)
                     // 예) 0반음 → 1.0배(원래 음), 12반음 → 2.0배(한 옥타브 위)

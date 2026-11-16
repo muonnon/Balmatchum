@@ -17,7 +17,10 @@ import android.widget.Toast;                   // 화면 아래에 잠깐 뜨는
 
 import androidx.appcompat.app.AppCompatActivity; // 화면(Activity)의 기본 부모 클래스
 
+import java.text.SimpleDateFormat;             // 날짜를 "11/16 13:05" 같은 글자로 바꿔주는 도구
 import java.util.ArrayDeque;                   // 앞/뒤 양쪽에서 넣고 뺄 수 있는 목록(큐)
+import java.util.Date;                         // 밀리초 시각을 날짜 객체로 감싸는 클래스
+import java.util.Locale;                       // 언어/지역 설정 (한국 형식으로 날짜 표시)
 
 /**
  * 걷기(홈) 화면.
@@ -53,6 +56,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     // bpmSum : 계산된 BPM들을 전부 더한 값 → 평균 BPM 계산에 사용
     private long startMs, bpmSum;
     private int bpmCount;              // BPM을 몇 번 계산했는지 (평균 = bpmSum / bpmCount)
+    private SongDbHelper dbHelper;                       // 곡 저장용 DB 도우미
+    private long seed;                                   // 이번 걷기의 멜로디 시드
+    private long startWallMs;                            // 걷기 시작 시각 (실제 시계, 날짜 표시용)
+    private final StringBuilder bpmSeries = new StringBuilder(); // 걸음마다의 BPM을 "112,113,..."로 쌓는다
 
     // ───────────────────────────── 생명주기 메서드 ─────────────────────────────
     // 안드로이드는 화면 상태가 바뀔 때마다 정해진 메서드를 자동으로 불러줘요.
@@ -83,6 +90,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         // 음악 엔진 생성. this(= 이 화면)를 넘기는 이유는 res/raw 소리 파일을 읽으려면 Context가 필요해서
         engine = new MusicEngine(this);
+        dbHelper = new SongDbHelper(this); // DB 도우미 생성 (DB 파일은 처음 쓸 때 만들어진다)
 
         // 시스템에서 센서 관리자를 받아오고, 그중 "걸음 감지 센서"를 찾음
         // TYPE_STEP_DETECTOR: 한 걸음 디딜 때마다 신호를 1번 보내주는 센서
@@ -126,6 +134,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override protected void onDestroy() {
         super.onDestroy();
         engine.release();
+        dbHelper.close(); // 앱이 끝날 때 DB 연결을 닫는다
     }
 
     // ───────────────────────────── 센서 콜백 ─────────────────────────────
@@ -149,6 +158,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         steps = 0; bpmSum = 0; bpmCount = 0;         // 이전 기록 초기화
         times.clear();                               // 이전 걸음 시각 목록 비우기
         startMs = SystemClock.elapsedRealtime();     // 시작 시각 기억 (걸은 시간 계산용)
+        startWallMs = System.currentTimeMillis(); // 날짜 표시용 실제 시각
+        seed = startWallMs;                       // 시작 시각을 시드로 쓰면 곡마다 다른 값이 된다
+        engine.setSeed(seed);                     // 엔진이 이 시드로 멜로디를 만들게 한다 (저장한 시드로 같은 곡을 다시 만들 수 있게)
+        bpmSeries.setLength(0);                   // 이전 걷기의 BPM 기록 비우기
         tvSteps.setText("걸음 수 0");
         tvBpm.setText("0");
         btnStart.setText("정지");                     // 같은 버튼을 이제 "정지" 버튼으로 사용
@@ -170,7 +183,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // 걸음이 너무 적어 BPM을 한 번도 계산 못 했으면(bpmCount == 0) 0으로 나누면 안 되니 0으로 표시
         // (조건 ? A : B) 는 "조건이 참이면 A, 거짓이면 B"라는 뜻 (삼항 연산자)
         int avg = bpmCount == 0 ? 0 : (int) (bpmSum / bpmCount);
-
+        // BPM을 한 번도 계산하지 못했으면(걸음이 0~1번) 음악이 한 번도 나오지 않은 것이므로 저장하지 않는다 (빈 곡 방지)
+        // steps > 0 으로 검사하면 1걸음만 걸었을 때 BPM 기록이 비어 있는 곡이 저장되어 버린다.
+        if (bpmCount > 0) {
+            String title = new SimpleDateFormat("M/d HH:mm", Locale.KOREA)
+                    .format(new Date(startWallMs)) + "의 걸음 곡";   // 예: "11/16 13:05의 걸음 곡"
+            long id = dbHelper.insertSong(title, startWallMs, (int) sec, steps, avg, seed, bpmSeries.toString());
+            // insert는 실패하면 -1을 돌려준다. 실패를 모르고 넘어가지 않도록 Logcat에 남긴다.
+            if (id == -1) android.util.Log.e("BAL", "곡 저장 실패: " + title);
+        }
         // LENGTH_LONG: 메시지를 조금 길게(약 3.5초) 보여줌
         Toast.makeText(this, "걸은 시간 " + sec + "초, 걸음 " + steps + ", 평균 " + avg + " BPM",
                 Toast.LENGTH_LONG).show();
@@ -216,6 +237,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             int bpmNow = (int) (60000 / avg);
             // 평균 BPM을 나중에 구하기 위해 합계와 개수를 누적
             bpmSum += bpmNow; bpmCount++;
+            // BPM 기록에 쉼표로 구분해 덧붙인다. 첫 값 앞에는 쉼표를 붙이지 않는다.
+            if (bpmSeries.length() > 0) bpmSeries.append(',');
+            bpmSeries.append(bpmNow);
             // bpmNow는 이미 BPM 값이므로 그대로 화면에 표시하고 엔진에 전달
             // (이전에는 60000 / bpmNow로 한 번 더 나눠서 ms 간격으로 되돌아가는 버그가 있었음)
             tvBpm.setText(String.valueOf(bpmNow));
