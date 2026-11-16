@@ -83,6 +83,19 @@ public class SongDbHelper extends SQLiteOpenHelper {
     }
 
     /**
+     * _id가 id인 곡 하나만 가져온다. (곡 상세 화면에서 사용)
+     * 결과는 0줄(그런 곡이 없음) 또는 1줄이다. 다 읽은 뒤 Cursor를 꼭 close() 해야 한다.
+     *
+     * @param id 가져올 곡의 _id
+     */
+    public Cursor querySong(long id) {
+        SQLiteDatabase db = getReadableDatabase();
+        // 조건 "_id = ?" : ? 자리에 id 값이 들어간다 → _id가 id인 줄만 가져옴
+        return db.query(TABLE, null, "_id = ?", new String[]{String.valueOf(id)},
+                null, null, null);
+    }
+
+    /**
      * _id가 id인 곡 하나를 지운다.
      * "_id = ?" 의 ?에는 두 번째 배열의 값이 안전하게 들어간다. (값을 SQL 문장에 직접 이어 붙이지 않기 위해)
      *

@@ -25,6 +25,10 @@
         <activity
             android:name=".SongListActivity"
             android:exported="false" />
+        <!-- 곡 상세 화면. 목록에서 곡을 누르면 열림 -->
+        <activity
+            android:name=".SongDetailActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

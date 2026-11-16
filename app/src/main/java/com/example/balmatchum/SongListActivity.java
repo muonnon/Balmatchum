@@ -1,5 +1,6 @@
 package com.example.balmatchum;
 
+import android.content.Intent;                  // 다른 화면을 열 때 보내는 요청서
 import android.database.Cursor;                 // DB 조회 결과를 한 줄씩 읽는 객체
 import android.os.Bundle;                       // 화면이 다시 만들어질 때 저장해 둔 값을 담는 상자
 import android.view.View;                       // 화면 요소(버튼, 글자 등)의 기본 클래스
@@ -20,7 +21,7 @@ import androidx.appcompat.app.AppCompatActivity;
  * - DB(songs 테이블)에 저장된 곡을 ListView로 보여줘요.
  * - 위쪽 선택 상자(Spinner)로 정렬 방식을 바꿀 수 있어요.
  * - 곡을 길게 누르면 삭제 확인 창이 뜨고, [삭제]를 누르면 지워져요.
- * - 곡을 짧게 누르면 곡 상세 화면으로 갈 예정이에요. (아직 없어서 지금은 안내 메시지만 띄움)
+ * - 곡을 짧게 누르면 곡 상세 화면(SongDetailActivity)이 열려요.
  */
 public class SongListActivity extends AppCompatActivity {
 
@@ -76,10 +77,14 @@ public class SongListActivity extends AppCompatActivity {
         });
         lv.setAdapter(adapter);
 
-        // ── 짧게 누르기: 곡 상세 화면으로 (아직 없음) ──
+        // ── 짧게 누르기: 곡 상세 화면으로 ──
         // id: SimpleCursorAdapter는 각 줄의 _id 열 값을 id로 넘겨준다 (그래서 테이블에 _id가 필요했음)
-        lv.setOnItemClickListener((parent, view, position, id) ->
-                Toast.makeText(this, "곡 상세 화면은 곧 만들 예정이에요", Toast.LENGTH_SHORT).show());
+        // putExtra(이름표, 값): Intent에 곡 번호를 담아 보냄 → 상세 화면이 getLongExtra로 꺼내 씀
+        lv.setOnItemClickListener((parent, view, position, id) -> {
+            Intent intent = new Intent(this, SongDetailActivity.class);
+            intent.putExtra(SongDetailActivity.EXTRA_SONG_ID, id);
+            startActivity(intent);
+        });
 
         // ── 길게 누르기: 삭제 확인 ──
         lv.setOnItemLongClickListener((parent, view, position, id) -> {

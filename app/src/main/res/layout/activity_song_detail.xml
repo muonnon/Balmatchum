@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 곡 상세 화면
+     바깥 FrameLayout의 fitsSystemWindows: 상태바/내비게이션바 밑으로 들어가지 않도록 여백을 줌
+     (같은 뷰에 padding을 주면 덮어써지므로 여백 16dp는 안쪽 LinearLayout에 줌) -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+<!-- ScrollView: 화면이 작은 기기(가로 모드 등)에서 내용이 넘치면 스크롤할 수 있게 감쌈 -->
+<ScrollView
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- 곡 제목 -->
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <!-- 날짜·시간 정보 (예: "2026년 11월 16일 (일) 오전 4:12 시작") -->
+    <TextView
+        android:id="@+id/tvDate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp" />
+
+    <!-- BPM 변화 그래프 (직접 만든 Custom View).
+         태그 이름에 패키지까지 전부 적어야 안드로이드가 우리 클래스를 찾을 수 있음 -->
+    <com.example.balmatchum.BpmGraphView
+        android:id="@+id/graph"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:layout_marginTop="16dp" />
+
+    <!-- 걸은 시간 · 걸음 수 · 평균 BPM -->
+    <TextView
+        android:id="@+id/tvStats"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center"
+        android:textSize="16sp" />
+
+    <!-- 재생 진행 막대. 끌어서 원하는 위치로 옮길 수 있음 -->
+    <SeekBar
+        android:id="@+id/seek"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp" />
+
+    <!-- 재생 시간 표시 (예: "0:05 / 0:11") -->
+    <TextView
+        android:id="@+id/tvTime"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:text="0:00 / 0:00" />
+
+    <!-- 버튼 두 개를 가로로 나란히. weight=1씩 → 반반 나눠 가짐 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnPlay"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="다시 듣기" />
+
+        <Button
+            android:id="@+id/btnDelete"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="삭제" />
+    </LinearLayout>
+</LinearLayout>
+</ScrollView>
+</FrameLayout>
