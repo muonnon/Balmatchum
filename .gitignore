@@ -1,12 +1,8 @@
 *.iml
 .gradle
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+# Android Studio 개인 설정 폴더 (내 컴퓨터 전용이라 공유하지 않음)
+/.idea/
 .DS_Store
 /build
 /captures
