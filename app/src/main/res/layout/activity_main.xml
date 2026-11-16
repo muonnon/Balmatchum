@@ -1,0 +1,12 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:gravity="center" android:padding="24dp">
+    <TextView android:id="@+id/tvBpm" android:text="0" android:textSize="64sp"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+    <TextView android:id="@+id/tvSteps" android:text="걸음 수 0"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+    <Button android:id="@+id/btnSim" android:text="걸음 시뮬레이션"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+    <Button android:id="@+id/btnStart" android:text="시작"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+</LinearLayout>
