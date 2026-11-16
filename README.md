@@ -217,14 +217,6 @@ Balmatchum/
 
 ---
 
-## 👤 개발자
-
-| 이름 | 역할 |
-|------|------|
-| 권미리 | Developer (개인 프로젝트) |
-
----
-
 ## 📄 라이선스
 
 이 프로젝트는 **교육 목적**으로 개발되었습니다.
@@ -235,6 +227,6 @@ Balmatchum/
 
 <div align="center">
 
-Made with 🎵 by 권미리
+Made with 🎵 by muonnon
 
 </div>
