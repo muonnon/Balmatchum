@@ -29,6 +29,10 @@
         <activity
             android:name=".SongDetailActivity"
             android:exported="false" />
+        <!-- 설정 화면. 걷기 화면의 [설정] 버튼으로 열림 -->
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

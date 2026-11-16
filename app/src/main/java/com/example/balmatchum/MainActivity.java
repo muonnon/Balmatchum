@@ -103,6 +103,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             startActivity(new android.content.Intent(this, SongListActivity.class));
         });
 
+        // "설정" 버튼: 설정 화면(SettingsActivity)을 연다. 기록 보기와 같은 이유로 걷는 중이면 먼저 정지(저장)한다.
+        // 설정을 바꾸고 돌아오면 onResume() → applySettings()에서 새 설정이 엔진에 적용된다.
+        findViewById(R.id.btnSettings).setOnClickListener(v -> {
+            if (walking) stopWalk();
+            startActivity(new android.content.Intent(this, SettingsActivity.class));
+        });
+
         // 음악 엔진 생성. this(= 이 화면)를 넘기는 이유는 res/raw 소리 파일을 읽으려면 Context가 필요해서
         engine = new MusicEngine(this);
         dbHelper = new SongDbHelper(this); // DB 도우미 생성 (DB 파일은 처음 쓸 때 만들어진다)

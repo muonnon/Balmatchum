@@ -12,4 +12,7 @@
     <!-- 저장된 걸음 곡 목록 화면으로 이동하는 버튼 -->
     <Button android:id="@+id/btnList" android:text="기록 보기"
         android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+    <!-- 설정 화면으로 이동하는 버튼 -->
+    <Button android:id="@+id/btnSettings" android:text="설정"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
 </LinearLayout>

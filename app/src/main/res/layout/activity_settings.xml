@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 설정 화면
+     바깥 FrameLayout의 fitsSystemWindows: 상태바/내비게이션바 밑으로 들어가지 않도록 여백을 줌
+     (같은 뷰에 padding을 주면 덮어써지므로 여백 16dp는 안쪽 LinearLayout에 줌) -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+<!-- 화면이 작은 기기나 가로 모드에서 넘치면 스크롤할 수 있게 감쌈 -->
+<ScrollView
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- 화면 제목 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="설정 · 테마"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <!-- ───── 스케일 ───── -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="스케일"
+        android:textStyle="bold" />
+
+    <!-- 펼쳐서 음계 하나를 고르는 선택 상자 (항목은 자바 코드에서 채움) -->
+    <Spinner
+        android:id="@+id/spScale"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp" />
+
+    <!-- ───── 사운드 테마 ───── -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="사운드 테마"
+        android:textStyle="bold" />
+
+    <!-- RadioGroup: 안에 든 RadioButton 중 하나만 선택되게 묶어 줌
+         orientation="horizontal": 세 버튼을 가로로 나란히 -->
+    <RadioGroup
+        android:id="@+id/rgTheme"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <RadioButton
+            android:id="@+id/rbTheme8bit"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="8bit" />
+
+        <RadioButton
+            android:id="@+id/rbThemeLofi"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Lo-fi" />
+
+        <RadioButton
+            android:id="@+id/rbThemePiano"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="피아노" />
+    </RadioGroup>
+
+    <!-- ───── 볼륨 ───── -->
+    <!-- 제목과 현재 값(%)을 한 줄에. weight=1인 제목이 남는 공간을 차지 → 값은 오른쪽 끝 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="볼륨"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvVolume"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="70%" />
+    </LinearLayout>
+
+    <!-- max="100": 0 ~ 100 사이 값 -->
+    <SeekBar
+        android:id="@+id/seekVolume"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:max="100" />
+
+    <!-- ───── 스위치 ───── -->
+    <!-- SwitchCompat: 켜기/끄기 스위치. 글자(text)는 왼쪽, 스위치는 오른쪽에 표시됨 -->
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/swBeat"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:minHeight="48dp"
+        android:text="비트(드럼) 켜기" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/swKeepScreen"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="걷는 동안 화면 켜두기" />
+
+    <!-- ───── 초기화 ───── -->
+    <Button
+        android:id="@+id/btnReset"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:text="설정 초기화" />
+</LinearLayout>
+</ScrollView>
+</FrameLayout>
