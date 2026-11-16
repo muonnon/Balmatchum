@@ -178,7 +178,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         int avg = bpmCount == 0 ? 0 : (int) (bpmSum / bpmCount);
 
         // LENGTH_LONG: 메시지를 조금 길게(약 3.5초) 보여줌
-        Toast.makeText(this, "걷은 시간 " + sec + "초, 걸음 " + steps + ", 평균 " + avg + " BPM",
+        Toast.makeText(this, "걸은 시간 " + sec + "초, 걸음 " + steps + ", 평균 " + avg + " BPM",
                 Toast.LENGTH_LONG).show();
     }
 
