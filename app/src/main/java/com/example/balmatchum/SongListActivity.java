@@ -164,12 +164,15 @@ public class SongListActivity extends AppCompatActivity {
     }
 
     /**
-     * 초를 "N분 N초" 글자로 바꿔요. 1분 미만이면 "N초".
-     * 예) 750 → "12분 30초", 45 → "45초"
+     * 초를 "N분 SS초" 글자로 바꿔요. 1분 미만이면 "N초". (와이어프레임 형식)
+     * 예) 750 → "12분 30초", 545 → "9분 05초", 45 → "45초"
      * sec / 60 = 분, sec % 60 = 남은 초
+     * %02d: 초를 항상 두 자리로 (5 → "05"). 분은 %d라서 앞에 0을 붙이지 않음 (9분 → "9분")
      */
     private static String formatDuration(int sec) {
-        return sec >= 60 ? (sec / 60) + "분 " + (sec % 60) + "초" : sec + "초";
+        return sec >= 60
+                ? String.format(Locale.KOREA, "%d분 %02d초", sec / 60, sec % 60)
+                : sec + "초";
     }
 
     /**
