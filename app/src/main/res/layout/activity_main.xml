@@ -1,18 +1,132 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:gravity="center" android:padding="24dp">
-    <TextView android:id="@+id/tvBpm" android:text="0" android:textSize="64sp"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-    <TextView android:id="@+id/tvSteps" android:text="걸음 수 0"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-    <Button android:id="@+id/btnSim" android:text="걸음 시뮬레이션"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-    <Button android:id="@+id/btnStart" android:text="시작"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-    <!-- 저장된 걸음 곡 목록 화면으로 이동하는 버튼 -->
-    <Button android:id="@+id/btnList" android:text="기록 보기"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-    <!-- 설정 화면으로 이동하는 버튼 -->
-    <Button android:id="@+id/btnSettings" android:text="설정"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 걷기(홈) 화면
+     구조: 바깥 FrameLayout(fitsSystemWindows: 상태바·내비게이션바만큼 여백) 안에
+          세로 LinearLayout = [상단 바] + [내용(여백 16dp, 남는 높이 전부)] + [하단 탭]
+     상단 바와 하단 탭은 화면 끝까지 꽉 차야 하므로 여백을 주지 않고, 가운데 내용에만 여백을 줌 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!-- 1. 공통 상단 바 ("발맞춤") -->
+    <include layout="@layout/include_toolbar" />
+
+    <!-- 가운데 내용. height=0dp + weight=1 → 상단 바와 하단 탭을 뺀 나머지 높이를 전부 사용 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="12dp">
+
+        <!-- 2. 칩 두 개 (현재 테마, 스케일). 누를 수 없는 표시용 TextView -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvChipTheme"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_chip"
+                android:gravity="center"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="테마 · 8bit"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/tvChipScale"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_chip"
+                android:gravity="center"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="스케일 · 펜타토닉"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- 3. 비주얼라이저: 남는 세로 공간을 전부 차지 (height=0dp + weight=1).
+             작은 기기에서는 이 영역이 줄어들어서, 아래의 BPM·타일·버튼이 잘리지 않음 -->
+        <com.example.balmatchum.WalkVisualizerView
+            android:id="@+id/visualizer"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="12dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_panel" />
+
+        <!-- 4. 큰 BPM 숫자 (72sp 굵게). includeFontPadding=false: 큰 글자 위아래의 쓸데없는 여백을 줄임 -->
+        <TextView
+            android:id="@+id/tvBpm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:text="0"
+            android:textSize="72sp"
+            android:textStyle="bold" />
+
+        <!-- BPM 설명 ("BPM · 보통 걸음 · 차분한 분위기") -->
+        <TextView
+            android:id="@+id/tvBpmInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="시작을 눌러 걸어 보세요"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="14sp" />
+
+        <!-- 5. 통계 타일 3개 (걸은 시간 / 걸음 수 / 평균 BPM) - 곡 상세와 같은 레이아웃을 include -->
+        <include
+            layout="@layout/include_stat_tiles"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" />
+
+        <!-- 걸음 시뮬레이션 버튼: 걸음 센서가 없는 기기(에뮬레이터)에서만 자바 코드가 보이게 바꿈.
+             visibility="gone": 기본은 숨김 + 자리도 차지하지 않음
+             TextButton 스타일: 테두리·배경 없는 작은 글자 버튼 -->
+        <Button
+            android:id="@+id/btnSim"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="4dp"
+            android:text="걸음 시뮬레이션"
+            android:visibility="gone" />
+
+        <!-- 6. 시작/정지 버튼: 가로 가득, 높이 64dp, 완전히 둥근 알약(cornerRadius = 높이의 절반 32dp), 20sp 굵게.
+             MaterialButton(Material 테마의 Button)은 cornerRadius로 모서리를 둥글게 할 수 있음.
+             insetTop/Bottom=0: Material 버튼 위아래에 자동으로 붙는 작은 여백을 없애서 정확히 64dp가 되게 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnStart"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:layout_marginTop="8dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:text="시작"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            app:cornerRadius="32dp" />
+    </LinearLayout>
+
+    <!-- 7. 공통 하단 탭 (걷기 선택됨 - 자바 코드에서 지정) -->
+    <include layout="@layout/include_bottom_nav" />
 </LinearLayout>
+</FrameLayout>

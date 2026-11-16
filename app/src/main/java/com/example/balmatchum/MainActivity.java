@@ -10,9 +10,12 @@ import android.hardware.SensorEventListener;   // "센서 값이 오면 알려�
 import android.hardware.SensorManager;         // 폰의 센서들을 관리하는 시스템 서비스
 import android.os.Build;                       // 현재 폰의 안드로이드 버전 확인용
 import android.os.Bundle;                      // 화면이 다시 만들어질 때 상태를 담아 오는 상자
+import android.os.Handler;                     // "1초 뒤에 이 일을 해 줘"처럼 일을 예약하는 도구 (걸은 시간 갱신)
+import android.os.Looper;                      // Handler가 일할 스레드 지정 (메인 = 화면 스레드)
 import android.os.SystemClock;                 // 부팅 후 흐른 시간(ms)을 재는 시계
 import android.widget.TextView;                // 글자를 보여주는 화면 요소
 import android.widget.Button;                  // 버튼 화면 요소
+import android.view.View;                      // 화면 요소의 기본 클래스 (보이기/숨기기 상수 VISIBLE, GONE)
 import android.view.WindowManager;             // 화면 켜두기 표시(FLAG_KEEP_SCREEN_ON)가 들어 있는 클래스
 import android.widget.Toast;                   // 화면 아래에 잠깐 뜨는 짧은 메시지
 
@@ -27,10 +30,12 @@ import java.util.Locale;                       // 언어/지역 설정 (한국 �
  * 걷기(홈) 화면.
  *
  * 하는 일:
- *  1. 걸음 감지 센서에서 걸음 신호를 받는다. (에뮬레이터에서는 "걸음 시뮬레이션" 버튼으로 대신)
+ *  1. 걸음 감지 센서에서 걸음 신호를 받는다. (센서가 없는 에뮬레이터에서는 "걸음 시뮬레이션" 버튼으로 대신)
  *  2. 최근 걸음 간격으로 BPM(1분당 걸음 수)을 계산해 화면에 보여준다.
  *  3. 계산한 BPM을 MusicEngine에 넘겨서 걸음 박자에 맞는 음악을 재생한다.
  *  4. 시작/정지 버튼으로 걷기를 시작하고, 끝나면 결과(시간, 걸음 수, 평균 BPM)를 보여준다.
+ *  5. 걸음마다 비주얼라이저(WalkVisualizerView)에 퍼지는 원을 그리고, 통계 타일을 실시간으로 갱신한다.
+ *  6. 하단 탭(NavHelper)으로 기록·설정 화면으로 이동한다. (걷는 중이면 먼저 정지·저장)
  *
  * extends AppCompatActivity  → "나는 안드로이드 화면(Activity)이다"
  * implements SensorEventListener → "센서 값이 오면 나에게 알려줘" (onSensorChanged가 호출됨)
@@ -42,7 +47,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private SensorManager sm;          // 센서 관리자 (센서를 찾고, 등록/해제할 때 사용)
     private Sensor stepSensor;         // 걸음 감지 센서. 센서가 없는 기기(에뮬레이터 등)에서는 null
-    private TextView tvBpm, tvSteps;   // 화면의 BPM 글자, 걸음 수 글자
+    private TextView tvBpm;            // 큰 BPM 숫자
+    private TextView tvBpmInfo;        // BPM 아래 설명 ("BPM · 보통 걸음 · 차분한 분위기")
+    private TextView tvChipTheme, tvChipScale;              // 위쪽 칩 두 개 (현재 테마, 스케일)
+    private TextView tvStatTime, tvStatSteps, tvStatAvg;    // 통계 타일 값 3개
+    private WalkVisualizerView visualizer;                   // 걸음마다 원이 퍼지는 그림
 
     // 최근 걸음들이 "언제" 일어났는지 시각(ms)을 담는 목록. 최대 8개까지만 보관해요.
     // final: 이 변수가 가리키는 목록 자체는 바뀌지 않는다는 뜻 (목록 안의 내용은 바뀔 수 있음)
@@ -68,6 +77,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private boolean beatOn;
     private boolean keepScreenOn;      // 걷는 동안 화면 켜두기
 
+    // 걷는 동안 1초마다 "걸은 시간" 타일을 갱신하기 위한 Handler와 반복 작업
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable timeUpdater = new Runnable() {
+        /** 걸은 시간을 표시하고, 걷는 중이면 1초 뒤에 자기 자신을 다시 예약 */
+        @Override public void run() {
+            showElapsed((SystemClock.elapsedRealtime() - startMs) / 1000);
+            if (walking) handler.postDelayed(this, 1000);
+        }
+    };
+
     // ───────────────────────────── 생명주기 메서드 ─────────────────────────────
     // 안드로이드는 화면 상태가 바뀔 때마다 정해진 메서드를 자동으로 불러줘요.
     //   onCreate  : 화면이 처음 만들어질 때 1번
@@ -83,32 +102,29 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onCreate(b);                             // 부모 클래스의 기본 준비 작업 (꼭 먼저 호출해야 함)
         setContentView(R.layout.activity_main);        // res/layout/activity_main.xml 을 이 화면의 모양으로 사용
 
+        // 공통 상단 바: 제목 "발맞춤", 뒤로가기 화살표 없음
+        NavHelper.setupToolbar(this, "발맞춤", false);
+
+        // 공통 하단 탭: 지금 화면은 "걷기" 탭.
+        // 다른 탭으로 떠나기 직전에 할 일: 걷는 중이면 정지하고 곡을 저장.
+        // (다른 화면으로 가면 onPause에서 음악이 멈추므로, 걷기를 어중간한 상태로 남기지 않으려고)
+        // 설정을 바꾸고 돌아오면 onResume() → applySettings()에서 새 설정이 엔진과 칩에 적용된다.
+        // () -> { ... } 는 Runnable(할 일 하나)을 짧게 쓴 람다
+        NavHelper.setupBottomNav(this, R.id.nav_walk, () -> { if (walking) stopWalk(); });
+
         // findViewById: XML에서 android:id 로 이름 붙인 화면 요소를 자바 코드로 가져오기
         tvBpm = findViewById(R.id.tvBpm);
-        tvSteps = findViewById(R.id.tvSteps);
-
-        // "걸음 시뮬레이션" 버튼을 누르면 실제 걸음이 감지된 것처럼 onStep()을 호출
-        // v -> onStep() 는 람다(짧게 쓴 함수)로, "클릭되면 onStep()을 실행해라"라는 뜻
-        findViewById(R.id.btnSim).setOnClickListener(v -> onStep());
+        tvBpmInfo = findViewById(R.id.tvBpmInfo);
+        tvChipTheme = findViewById(R.id.tvChipTheme);
+        tvChipScale = findViewById(R.id.tvChipScale);
+        tvStatTime = findViewById(R.id.tvStatTime);     // include한 include_stat_tiles.xml 안의 id도 똑같이 찾을 수 있음
+        tvStatSteps = findViewById(R.id.tvStatSteps);
+        tvStatAvg = findViewById(R.id.tvStatAvg);
+        visualizer = findViewById(R.id.visualizer);
 
         btnStart = findViewById(R.id.btnStart);
         // 버튼 하나로 시작/정지를 번갈아 처리: 걷는 중이면 정지, 아니면 시작
         btnStart.setOnClickListener(v -> { if (walking) stopWalk(); else startWalk(); });
-
-        // "기록 보기" 버튼: 곡 목록 화면(SongListActivity)을 연다.
-        // Intent = "어떤 화면을 열고 싶다"는 요청서. (지금 화면, 열 화면의 클래스)를 적어 startActivity로 보낸다.
-        // 걷는 중에 다른 화면으로 가면 onPause에서 음악이 멈추므로, 먼저 걷기를 정지(저장)한 뒤 이동한다.
-        findViewById(R.id.btnList).setOnClickListener(v -> {
-            if (walking) stopWalk();
-            startActivity(new android.content.Intent(this, SongListActivity.class));
-        });
-
-        // "설정" 버튼: 설정 화면(SettingsActivity)을 연다. 기록 보기와 같은 이유로 걷는 중이면 먼저 정지(저장)한다.
-        // 설정을 바꾸고 돌아오면 onResume() → applySettings()에서 새 설정이 엔진에 적용된다.
-        findViewById(R.id.btnSettings).setOnClickListener(v -> {
-            if (walking) stopWalk();
-            startActivity(new android.content.Intent(this, SettingsActivity.class));
-        });
 
         // 음악 엔진 생성. this(= 이 화면)를 넘기는 이유는 res/raw 소리 파일을 읽으려면 Context가 필요해서
         engine = new MusicEngine(this);
@@ -119,6 +135,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // 기기에 이 센서가 없으면 null이 돌아와요.
         sm = (SensorManager) getSystemService(SENSOR_SERVICE);
         stepSensor = sm.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
+
+        // "걸음 시뮬레이션" 버튼: 걸음 센서가 없는 기기(에뮬레이터 등)에서만 보여줌. 실제 폰에서는 숨김.
+        // 누르면 실제 걸음이 감지된 것처럼 onStep()을 호출
+        // v -> onStep() 는 람다(짧게 쓴 함수)로, "클릭되면 onStep()을 실행해라"라는 뜻
+        View btnSim = findViewById(R.id.btnSim);
+        btnSim.setVisibility(stepSensor == null ? View.VISIBLE : View.GONE);
+        btnSim.setOnClickListener(v -> onStep());
 
         // 안드로이드 10(API 29)부터는 걸음 센서를 쓰려면 "신체 활동" 권한을 사용자에게 직접 받아야 해요.
         // 아직 허용되지 않았다면 권한 요청 팝업을 띄움. 마지막 숫자 1은 요청을 구분하는 번호(requestCode)
@@ -138,6 +161,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // SENSOR_DELAY_FASTEST: 가능한 한 빨리 신호를 전달받기 (박자 계산이 늦지 않도록)
         if (stepSensor != null) sm.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_FASTEST);
         applySettings();
+        // 걷는 중에 잠깐 다른 앱에 갔다 왔다면 걸은 시간 갱신을 다시 시작 (onPause에서 멈췄으므로)
+        if (walking) handler.post(timeUpdater);
     }
 
     /**
@@ -152,6 +177,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         keepScreenOn = dbHelper.getBoolSetting(SongDbHelper.KEY_KEEP_SCREEN, SongDbHelper.DEFAULT_KEEP_SCREEN);
         int volume = dbHelper.getIntSetting(SongDbHelper.KEY_VOLUME, SongDbHelper.DEFAULT_VOLUME);
         engine.applySettings(scaleId, themeId, volume, beatOn);
+
+        // 위쪽 칩에 현재 테마와 스케일 이름을 표시
+        tvChipTheme.setText("테마 · " + nameOf(MusicEngine.THEME_NAMES, themeId));
+        tvChipScale.setText("스케일 · " + nameOf(MusicEngine.SCALE_NAMES, scaleId));
+        // 스케일이 바뀌었으면 BPM 설명의 "분위기"도 바뀌므로 다시 표시 (BPM이 있을 때만)
+        int bpmShown = parseIntOr(tvBpm.getText().toString(), 0);
+        if (bpmShown > 0) tvBpmInfo.setText(bpmInfo(bpmShown));
     }
 
     /**
@@ -162,6 +194,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onPause();
         sm.unregisterListener(this);   // 센서 신호 그만 받기
         engine.stop();                 // 음악 재생 스레드 멈추기
+        handler.removeCallbacks(timeUpdater); // 화면이 안 보이는 동안은 걸은 시간 갱신도 쉼
     }
 
     /**
@@ -170,6 +203,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
      */
     @Override protected void onDestroy() {
         super.onDestroy();
+        handler.removeCallbacks(timeUpdater); // 예약해 둔 일이 사라진 화면을 건드리지 않게 취소
         engine.release();
         dbHelper.close(); // 앱이 끝날 때 DB 연결을 닫는다
     }
@@ -202,9 +236,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // "화면 켜두기"가 켜져 있으면 걷는 동안 화면이 꺼지지 않게 함
         // FLAG_KEEP_SCREEN_ON: 이 화면이 보이는 동안 자동으로 화면이 꺼지는 것을 막는 표시(권한 필요 없음)
         if (keepScreenOn) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        tvSteps.setText("걸음 수 0");
+
+        // 화면 초기화: 큰 BPM, 설명, 통계 타일 3개를 0으로
         tvBpm.setText("0");
+        tvBpmInfo.setText("걸음을 감지하고 있어요");
+        showElapsed(0);
+        tvStatSteps.setText("0");
+        tvStatAvg.setText("0");
         btnStart.setText("정지");                     // 같은 버튼을 이제 "정지" 버튼으로 사용
+
+        visualizer.setWalking(true);                 // 비주얼라이저의 안내 글자 숨기기
+        handler.removeCallbacks(timeUpdater);        // 혹시 남은 예약이 있으면 지우고
+        handler.postDelayed(timeUpdater, 1000);      // 1초 뒤부터 1초마다 걸은 시간 갱신
     }
 
     /**
@@ -218,9 +261,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // 화면 켜두기 해제 → 다시 평소처럼 일정 시간이 지나면 화면이 꺼짐
         // (켜 두지 않았던 경우에도 clearFlags는 아무 문제 없이 그냥 넘어감)
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        handler.removeCallbacks(timeUpdater);        // 걸은 시간 갱신 멈춤
+        visualizer.setWalking(false);                // 퍼지던 원을 지우고 그림을 멈춤
 
         // 걸은 시간(초) = (지금 시각 - 시작 시각) / 1000   (ms → 초)
         long sec = (SystemClock.elapsedRealtime() - startMs) / 1000;
+        showElapsed(sec);                            // 마지막 값을 타일에 남겨 둠 (다시 시작하면 0으로)
 
         // 평균 BPM = BPM 합계 / 계산 횟수
         // 걸음이 너무 적어 BPM을 한 번도 계산 못 했으면(bpmCount == 0) 0으로 나누면 안 되니 0으로 표시
@@ -268,7 +314,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if (times.size() > 8) times.removeFirst();   // 8개를 넘으면 가장 오래된 것(맨 앞)을 버림
 
         steps++;                                     // 총 걸음 수 1 증가
-        tvSteps.setText("걸음 수 " + steps);
+        // %,d: 정수를 천 단위 쉼표와 함께 (1240 → "1,240")
+        tvStatSteps.setText(String.format(Locale.KOREA, "%,d", steps));
+        visualizer.pulse();                          // 걸음마다 퍼지는 원 하나 추가
 
         // 걸음 시각이 2개 이상 모여야 "간격"을 잴 수 있으므로 그때부터 BPM 계산
         if (times.size() >= 2) {
@@ -288,8 +336,46 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             // bpmNow는 이미 BPM 값이므로 그대로 화면에 표시하고 엔진에 전달
             // (이전에는 60000 / bpmNow로 한 번 더 나눠서 ms 간격으로 되돌아가는 버그가 있었음)
             tvBpm.setText(String.valueOf(bpmNow));
+            tvBpmInfo.setText(bpmInfo(bpmNow));      // "BPM · 보통 걸음 · 차분한 분위기"
+            tvStatAvg.setText(String.valueOf(bpmSum / bpmCount)); // 평균 BPM 실시간 갱신
             engine.setBpm(bpmNow);                   // 음악 박자를 지금 걸음 속도에 맞춤
             engine.start();                          // 음악 시작 (이미 재생 중이면 MusicEngine이 알아서 무시)
         }
+    }
+    // ───────────────────────────── 화면 표시 도우미 ─────────────────────────────
+
+    /**
+     * 걸은 시간 타일에 "mm:ss" 형식으로 표시해요. 예) 750초 → "12:30"
+     * %02d: 두 자리 정수, 한 자리면 앞에 0을 붙임 (5 → "05")
+     */
+    private void showElapsed(long sec) {
+        tvStatTime.setText(String.format(Locale.KOREA, "%02d:%02d", sec / 60, sec % 60));
+    }
+
+    /**
+     * BPM 아래 설명 글자를 만들어요. 예) 112, 펜타토닉 → "BPM · 보통 걸음 · 차분한 분위기"
+     *  - 걸음 빠르기: 100 미만 느린 걸음 / 100~119 보통 걸음 / 120 이상 빠른 걸음
+     *  - 분위기: 지금 설정된 스케일로 정함
+     */
+    private String bpmInfo(int bpm) {
+        String speed = bpm < 100 ? "느린 걸음" : (bpm < 120 ? "보통 걸음" : "빠른 걸음");
+        String mood;
+        if (scaleId == 1) mood = "어두운 분위기";        // 마이너 펜타토닉
+        else if (scaleId == 2) mood = "밝은 분위기";     // 장음계
+        else mood = "차분한 분위기";                     // 펜타토닉(0) 또는 알 수 없는 값
+        return "BPM · " + speed + " · " + mood;
+    }
+
+    /**
+     * 이름 목록에서 번호에 맞는 이름을 꺼내요. 범위 밖이면 첫 번째 이름.
+     * 예) ({"8bit", "Lo-fi", "피아노"}, 1) → "Lo-fi"
+     */
+    private static String nameOf(String[] names, int id) {
+        return id >= 0 && id < names.length ? names[id] : names[0];
+    }
+
+    /** 글자를 정수로 바꾸고, 숫자가 아니면 기본값을 돌려줘요. */
+    private static int parseIntOr(String text, int def) {
+        try { return Integer.parseInt(text); } catch (NumberFormatException e) { return def; }
     }
 }
