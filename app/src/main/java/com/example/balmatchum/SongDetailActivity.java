@@ -21,11 +21,12 @@ import java.util.Locale;
  * 곡 상세 화면.
  * 목록에서 곡을 짧게 누르면 열려요. (어떤 곡인지는 Intent에 담긴 _id로 알아냄)
  *
- * 화면 구성:
- *  - 제목, 날짜·시간
+ * 화면 구성 (하단 탭 없음):
+ *  - 상단 바: 뒤로가기(<) + 곡 제목
+ *  - 한 줄 정보: 날짜·시간 · 테마 · 스케일 (곡에 저장된 값)
  *  - BPM 변화 그래프 (BpmGraphView)
- *  - 걸은 시간 · 걸음 수 · 평균 BPM
- *  - 진행 SeekBar + 재생 시간
+ *  - 통계 타일 3개: 걸은 시간 / 걸음 수 / 평균 BPM
+ *  - 진행 SeekBar + 왼쪽 현재 시간 / 오른쪽 전체 길이
  *  - [다시 듣기 / 일시정지] 버튼, [삭제] 버튼
  *
  * 다시 듣기 원리:
@@ -45,7 +46,7 @@ public class SongDetailActivity extends AppCompatActivity {
 
     private BpmGraphView graph;
     private SeekBar seek;
-    private TextView tvTime;
+    private TextView tvTimeNow, tvTimeTotal;   // 막대 아래 왼쪽(현재 재생 시간), 오른쪽(전체 길이)
     private Button btnPlay;
 
     private long songId;                 // 지금 보고 있는 곡의 _id
@@ -94,7 +95,8 @@ public class SongDetailActivity extends AppCompatActivity {
 
         graph = findViewById(R.id.graph);
         seek = findViewById(R.id.seek);
-        tvTime = findViewById(R.id.tvTime);
+        tvTimeNow = findViewById(R.id.tvTimeNow);
+        tvTimeTotal = findViewById(R.id.tvTimeTotal);
         btnPlay = findViewById(R.id.btnPlay);
 
         // 목록 화면이 Intent에 넣어 준 곡 번호 꺼내기. 값이 없으면 기본값 -1
@@ -215,19 +217,21 @@ public class SongDetailActivity extends AppCompatActivity {
             songBeatOn = c.getInt(c.getColumnIndexOrThrow("beat_on")) == 1;   // 1 → true, 0 → false
 
             // ── 글자 채우기 ──
-            ((TextView) findViewById(R.id.tvTitle)).setText(title);
-            // 형식 기호: yyyy=연도, M=월, d=일, E=요일(일, 월…), a=오전/오후, h=시(1~12), mm=분(두 자리)
-            String date = new SimpleDateFormat("yyyy년 M월 d일 (E) a h:mm", Locale.KOREA)
-                    .format(new Date(startedAt));
-            ((TextView) findViewById(R.id.tvDate)).setText(date + " 시작");
-            ((TextView) findViewById(R.id.tvStats)).setText(
-                    "걸은 시간 " + formatTime(durationSec * 1000L)
-                            + " · 걸음 " + steps + " · 평균 " + avgBpm + " BPM");
-            // 곡에 저장된 소리 설정 표시 (예: "테마 8bit · 스케일 펜타토닉 · 비트 켜짐")
-            ((TextView) findViewById(R.id.tvSound)).setText(
-                    "테마 " + nameOf(MusicEngine.THEME_NAMES, songThemeId)
-                            + " · 스케일 " + nameOf(MusicEngine.SCALE_NAMES, songScaleId)
-                            + " · 비트 " + (songBeatOn ? "켜짐" : "꺼짐"));
+            // 상단 바: 뒤로가기(<) 화살표 + 곡 제목. 화살표를 누르면 finish() → 목록으로
+            NavHelper.setupToolbar(this, title, true);
+
+            // 한 줄 정보 (예: "10/23 (금) 13:05 · 테마 8bit · 스케일 펜타토닉") - 곡에 저장된 값 기준
+            // 형식 기호: M=월, d=일, E=요일 한 글자(일, 월…), HH=시(0~23), mm=분(두 자리)
+            String date = new SimpleDateFormat("M/d (E) HH:mm", Locale.KOREA).format(new Date(startedAt));
+            ((TextView) findViewById(R.id.tvDate)).setText(date
+                    + " · 테마 " + nameOf(MusicEngine.THEME_NAMES, songThemeId)
+                    + " · 스케일 " + nameOf(MusicEngine.SCALE_NAMES, songScaleId));
+
+            // 통계 타일 3개 (include_stat_tiles.xml 안의 TextView)
+            ((TextView) findViewById(R.id.tvStatTime)).setText(formatTime(durationSec * 1000L));
+            // %,d: 천 단위 쉼표 (1240 → "1,240")
+            ((TextView) findViewById(R.id.tvStatSteps)).setText(String.format(Locale.KOREA, "%,d", steps));
+            ((TextView) findViewById(R.id.tvStatAvg)).setText(String.valueOf(avgBpm));
 
             // ── 그래프와 엔진 준비 ──
             int[] series = parseSeries(seriesText);
@@ -327,21 +331,22 @@ public class SongDetailActivity extends AppCompatActivity {
     }
 
     /**
-     * 시간 글자("0:05 / 0:11")와 그래프의 재생 위치 막대를 pos(ms) 위치로 표시해요.
+     * 막대 아래 시간 글자(왼쪽 "00:05", 오른쪽 "00:11")와 그래프의 재생 위치 막대를 pos(ms) 위치로 표시해요.
      */
     private void showPosition(long pos) {
-        tvTime.setText(formatTime(pos) + " / " + formatTime(totalMs));
+        tvTimeNow.setText(formatTime(pos));          // 왼쪽: 현재 재생 시간
+        tvTimeTotal.setText(formatTime(totalMs));    // 오른쪽: 전체 길이
         // 0으로 나누기 방지: 전체 길이가 0이면 위치도 0
         graph.setProgress(totalMs == 0 ? 0f : (float) pos / totalMs);
     }
 
     /**
-     * 밀리초를 "분:초" 글자로 바꿔요. 예) 65000 → "1:05"
-     * %d = 정수, %02d = 두 자리 정수(한 자리면 앞에 0을 붙임)
+     * 밀리초를 "mm:ss" 글자로 바꿔요. 예) 65000 → "01:05", 750000 → "12:30"
+     * %02d = 두 자리 정수(한 자리면 앞에 0을 붙임). 와이어프레임의 "04:22", "12:30" 형식에 맞춤
      */
     private static String formatTime(long ms) {
         long sec = ms / 1000;
-        return String.format(Locale.KOREA, "%d:%02d", sec / 60, sec % 60);
+        return String.format(Locale.KOREA, "%02d:%02d", sec / 60, sec % 60);
     }
 
     // ───────────────────────────── 삭제 ─────────────────────────────

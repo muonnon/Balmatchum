@@ -1,100 +1,140 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 곡 상세 화면
-     바깥 FrameLayout의 fitsSystemWindows: 상태바/내비게이션바 밑으로 들어가지 않도록 여백을 줌
-     (같은 뷰에 padding을 주면 덮어써지므로 여백 16dp는 안쪽 LinearLayout에 줌) -->
+<!-- 곡 상세 화면 (하단 탭 없음)
+     구조: 바깥 FrameLayout(fitsSystemWindows) > 세로 LinearLayout = [상단 바(< 곡 제목)] + [내용(여백 16dp)]
+     그래프가 남는 높이를 차지하고(최소 200dp), 나머지(타일·막대·버튼)는 필요한 만큼만 차지함 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true">
 
-<!-- ScrollView: 화면이 작은 기기(가로 모드 등)에서 내용이 넘치면 스크롤할 수 있게 감쌈 -->
-<ScrollView
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
-
 <LinearLayout
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
-    <!-- 곡 제목 -->
-    <TextView
-        android:id="@+id/tvTitle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="22sp"
-        android:textStyle="bold" />
+    <!-- 1. 공통 상단 바: 뒤로가기(<) + 곡 제목 (자바 코드에서 설정) -->
+    <include layout="@layout/include_toolbar" />
 
-    <!-- 날짜·시간 정보 (예: "2026년 11월 16일 (일) 오전 4:12 시작") -->
-    <TextView
-        android:id="@+id/tvDate"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp" />
-
-    <!-- BPM 변화 그래프 (직접 만든 Custom View).
-         태그 이름에 패키지까지 전부 적어야 안드로이드가 우리 클래스를 찾을 수 있음 -->
-    <com.example.balmatchum.BpmGraphView
-        android:id="@+id/graph"
-        android:layout_width="match_parent"
-        android:layout_height="200dp"
-        android:layout_marginTop="16dp" />
-
-    <!-- 걸은 시간 · 걸음 수 · 평균 BPM -->
-    <TextView
-        android:id="@+id/tvStats"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:gravity="center"
-        android:textSize="16sp" />
-
-    <!-- 곡에 저장된 소리 설정 (예: "테마 8bit · 스케일 펜타토닉 · 비트 켜짐") -->
-    <TextView
-        android:id="@+id/tvSound"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:gravity="center" />
-
-    <!-- 재생 진행 막대. 끌어서 원하는 위치로 옮길 수 있음 -->
-    <SeekBar
-        android:id="@+id/seek"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp" />
-
-    <!-- 재생 시간 표시 (예: "0:05 / 0:11") -->
-    <TextView
-        android:id="@+id/tvTime"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="end"
-        android:text="0:00 / 0:00" />
-
-    <!-- 버튼 두 개를 가로로 나란히. weight=1씩 → 반반 나눠 가짐 -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:orientation="horizontal">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="16dp">
 
-        <Button
-            android:id="@+id/btnPlay"
-            android:layout_width="0dp"
+        <!-- 2. 한 줄 정보 (예: "10/23 (금) 13:05 · 테마 8bit · 스케일 펜타토닉") -->
+        <TextView
+            android:id="@+id/tvDate"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="8dp"
-            android:text="다시 듣기" />
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp" />
 
-        <Button
-            android:id="@+id/btnDelete"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
+        <!-- 3. BPM 그래프 영역: 남는 세로 공간 차지(weight=1), 최소 200dp.
+             연한 배경(bg_panel) 안에 그래프 + 아래쪽 작은 설명 글자 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="12dp"
             android:layout_weight="1"
-            android:text="삭제" />
+            android:background="@drawable/bg_panel"
+            android:minHeight="200dp"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <!-- 직접 만든 그래프 Custom View (태그에 패키지 이름까지 전부 적어야 함) -->
+            <com.example.balmatchum.BpmGraphView
+                android:id="@+id/graph"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:text="BPM 변화 그래프 (가로: 시간, 세로: BPM)"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- 4. 통계 타일 3개 (걷기 화면과 같은 레이아웃) -->
+        <include
+            layout="@layout/include_stat_tiles"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" />
+
+        <!-- 5. 재생 막대. 끌어서 원하는 위치로 옮길 수 있음 -->
+        <SeekBar
+            android:id="@+id/seek"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" />
+
+        <!-- 막대 아래: 왼쪽 현재 재생 시간, 오른쪽 전체 길이 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvTimeNow"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="00:00"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tvTimeTotal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="00:00"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- 6. 버튼 두 개 가로 배치 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
+
+            <!-- [다시 듣기 / 일시정지]: 남는 너비 전부, 높이 56dp, 알약 모양(cornerRadius 28dp = 높이 절반), 강조색(기본 버튼) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPlay"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="다시 듣기"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                app:cornerRadius="28dp" />
+
+            <!-- [삭제]: 너비 96dp, 테두리만 있는 알약 (OutlinedButton 스타일) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDelete"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="96dp"
+                android:layout_height="56dp"
+                android:layout_marginStart="12dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="삭제"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                app:cornerRadius="28dp" />
+        </LinearLayout>
     </LinearLayout>
 </LinearLayout>
-</ScrollView>
 </FrameLayout>
