@@ -97,12 +97,21 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if (times.size() > 8) times.removeFirst();
         steps++;
         tvSteps.setText("걸음 수 " + steps);
+        // 걸음 시각이 2개 이상 모여야 "간격"을 잴 수 있으므로 그때부터 BPM 계산
         if (times.size() >= 2) {
+            // 평균 걸음 간격(ms) = (가장 최근 걸음 시각 - 가장 오래된 걸음 시각) / 간격 개수
             long avg = (times.peekLast() - times.peekFirst()) / (times.size() - 1);
-            int bpmNow = (int)(60000/avg);
+            // 간격이 0이면 0으로 나누기 오류가 나므로 건너뜀 (버튼을 아주 빠르게 연타한 경우)
+            if (avg <= 0) return;
+            // BPM = 1분(60000ms) 동안 걸을 수 있는 걸음 수 = 60000 / 평균 간격
+            // 예) 간격 500ms → 60000 / 500 = 120 BPM
+            int bpmNow = (int) (60000 / avg);
+            // 평균 BPM을 나중에 구하기 위해 합계와 개수를 누적
             bpmSum += bpmNow; bpmCount++;
-            tvBpm.setText(String.valueOf(60000 / bpmNow));
-            engine.setBpm((int) (60000 / bpmNow));
+            // bpmNow는 이미 BPM 값이므로 그대로 화면에 표시하고 엔진에 전달
+            // (이전에는 60000 / bpmNow로 한 번 더 나눠서 ms 간격으로 되돌아가는 버그가 있었음)
+            tvBpm.setText(String.valueOf(bpmNow));
+            engine.setBpm(bpmNow);
             engine.start();
         }
     }
