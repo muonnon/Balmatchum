@@ -50,6 +50,14 @@
         android:gravity="center"
         android:textSize="16sp" />
 
+    <!-- 곡에 저장된 소리 설정 (예: "테마 8bit · 스케일 펜타토닉 · 비트 켜짐") -->
+    <TextView
+        android:id="@+id/tvSound"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center" />
+
     <!-- 재생 진행 막대. 끌어서 원하는 위치로 옮길 수 있음 -->
     <SeekBar
         android:id="@+id/seek"

@@ -49,6 +49,11 @@ public class SongDetailActivity extends AppCompatActivity {
     private Button btnPlay;
 
     private long songId;                 // 지금 보고 있는 곡의 _id
+
+    // 이 곡을 저장할 때 쓰던 소리 설정 (DB의 songs 테이블에서 읽음)
+    // 다시 듣기는 "지금 설정"이 아니라 이 값으로 재생해야 저장 당시와 똑같은 소리가 나요.
+    private int songScaleId, songThemeId;
+    private boolean songBeatOn;
     private long totalMs;                // 다시 듣기 전체 길이 (bpm_series로 계산한 값)
 
     private boolean userSeeking = false;     // 사용자가 SeekBar를 손으로 끌고 있는 중인지
@@ -142,6 +147,25 @@ public class SongDetailActivity extends AppCompatActivity {
     }
 
     /**
+     * 화면이 보일 때마다 호출돼요.
+     * 곡의 소리 설정(스케일·테마·비트)과 "지금의" 볼륨을 엔진에 적용해요.
+     * 볼륨은 곡에 저장하지 않는 "듣는 환경" 설정이라 설정 화면의 현재 값을 써요.
+     * (스케일은 곡의 값 그대로라 몇 번을 불러도 멜로디 위치가 바뀌지 않아요)
+     */
+    @Override protected void onResume() {
+        super.onResume();
+        applySongSound();
+    }
+
+    /**
+     * 곡에 저장된 스케일·테마·비트 + 현재 볼륨을 엔진에 넣어요.
+     */
+    private void applySongSound() {
+        int volume = dbHelper.getIntSetting(SongDbHelper.KEY_VOLUME, SongDbHelper.DEFAULT_VOLUME);
+        engine.applySettings(songScaleId, songThemeId, volume, songBeatOn);
+    }
+
+    /**
      * 화면이 가려질 때(뒤로 가기, 홈 버튼, 다른 앱) 호출돼요.
      * 소리를 멈춰요. 위치는 엔진에 남아 있어서 돌아와서 [다시 듣기]를 누르면 이어서 재생돼요.
      */
@@ -185,6 +209,10 @@ public class SongDetailActivity extends AppCompatActivity {
             int avgBpm = c.getInt(c.getColumnIndexOrThrow("avg_bpm"));
             long seed = c.getLong(c.getColumnIndexOrThrow("seed"));
             String seriesText = c.getString(c.getColumnIndexOrThrow("bpm_series"));
+            // DB 버전 2에서 추가된 열. 예전 곡은 DEFAULT 값(0, 0, 1)이 들어 있음
+            songScaleId = c.getInt(c.getColumnIndexOrThrow("scale_id"));
+            songThemeId = c.getInt(c.getColumnIndexOrThrow("theme_id"));
+            songBeatOn = c.getInt(c.getColumnIndexOrThrow("beat_on")) == 1;   // 1 → true, 0 → false
 
             // ── 글자 채우기 ──
             ((TextView) findViewById(R.id.tvTitle)).setText(title);
@@ -195,10 +223,18 @@ public class SongDetailActivity extends AppCompatActivity {
             ((TextView) findViewById(R.id.tvStats)).setText(
                     "걸은 시간 " + formatTime(durationSec * 1000L)
                             + " · 걸음 " + steps + " · 평균 " + avgBpm + " BPM");
+            // 곡에 저장된 소리 설정 표시 (예: "테마 8bit · 스케일 펜타토닉 · 비트 켜짐")
+            ((TextView) findViewById(R.id.tvSound)).setText(
+                    "테마 " + nameOf(MusicEngine.THEME_NAMES, songThemeId)
+                            + " · 스케일 " + nameOf(MusicEngine.SCALE_NAMES, songScaleId)
+                            + " · 비트 " + (songBeatOn ? "켜짐" : "꺼짐"));
 
             // ── 그래프와 엔진 준비 ──
             int[] series = parseSeries(seriesText);
             graph.setData(series);
+            // 순서 중요: 스케일을 먼저 정해야 loadReplay가 그 스케일에 맞는 시작 음 위치로 되감아요.
+            // (반대로 하면 이전 스케일 기준으로 시작 위치가 정해져서 멜로디가 달라질 수 있음)
+            applySongSound();
             engine.loadReplay(seed, series);
             totalMs = engine.getTotalMs();
             // SeekBar의 최댓값을 전체 길이(ms)로 → SeekBar 값 1 = 1ms라서 위치 계산이 간단해짐
@@ -214,6 +250,14 @@ public class SongDetailActivity extends AppCompatActivity {
         } finally {
             c.close();
         }
+    }
+
+    /**
+     * 이름 목록에서 번호에 맞는 이름을 꺼내요. 번호가 범위 밖이면(잘못 저장된 경우) "알 수 없음"
+     * 예) nameOf({"8bit", "Lo-fi", "피아노"}, 1) → "Lo-fi"
+     */
+    private static String nameOf(String[] names, int id) {
+        return id >= 0 && id < names.length ? names[id] : "알 수 없음";
     }
 
     /**
