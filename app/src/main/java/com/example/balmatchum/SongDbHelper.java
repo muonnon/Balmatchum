@@ -16,7 +16,8 @@ public class SongDbHelper extends SQLiteOpenHelper {
     // 테이블 구조를 바꿀 때 숫자를 올린다.
     //   1: songs 테이블
     //   2: songs에 scale_id, theme_id, beat_on 열 추가 + settings 테이블 추가
-    private static final int DB_VERSION = 2;
+    //   3: songs에 melody_version 열 추가 (옛 곡 0 = 옛 멜로디 알고리즘, 새 곡 1 = SongComposer)
+    private static final int DB_VERSION = 3;
     public static final String TABLE = "songs";            // 테이블 이름 (다른 클래스에서도 쓰려고 public)
     public static final String SETTINGS_TABLE = "settings"; // 설정값 테이블 이름
 
@@ -55,7 +56,9 @@ public class SongDbHelper extends SQLiteOpenHelper {
                 // ↓ 버전 2에서 추가된 열. 다시 듣기를 저장 당시와 똑같은 소리로 하려고 곡마다 기록한다.
                 + "scale_id INTEGER DEFAULT 0, "   // 스케일 번호
                 + "theme_id INTEGER DEFAULT 0, "   // 사운드 테마 번호
-                + "beat_on INTEGER DEFAULT 1)");   // 비트 켜짐 1 / 꺼짐 0 (SQLite에는 boolean이 없어 정수로 저장)
+                + "beat_on INTEGER DEFAULT 1, "    // 비트 켜짐 1 / 꺼짐 0 (SQLite에는 boolean이 없어 정수로 저장)
+                // ↓ 버전 3에서 추가된 열. 곡을 만든 멜로디 알고리즘 버전 (다시 들을 때 같은 알고리즘으로 재생)
+                + "melody_version INTEGER NOT NULL DEFAULT 0)");
         createSettingsTable(db);
     }
 
@@ -88,16 +91,25 @@ public class SongDbHelper extends SQLiteOpenHelper {
             db.execSQL("ALTER TABLE " + TABLE + " ADD COLUMN beat_on INTEGER DEFAULT 1");
             createSettingsTable(db);
         }
+        if (oldVersion < 3) {
+            // 버전 2 → 3: 멜로디 알고리즘 버전 열 추가.
+            // DROP 없이 열만 추가하므로 저장된 곡은 그대로 남아요.
+            // NOT NULL DEFAULT 0: 이미 있던 곡은 모두 0(옛 알고리즘)으로 채워짐
+            //  → 업데이트 후에도 옛 곡은 옛 알고리즘 + 옛 소리로 예전과 똑같이 재생돼요.
+            // (SQLite는 ADD COLUMN에 NOT NULL을 쓰려면 DEFAULT 값이 꼭 있어야 해요)
+            db.execSQL("ALTER TABLE " + TABLE + " ADD COLUMN melody_version INTEGER NOT NULL DEFAULT 0");
+        }
     }
 
     /**
      * 곡 한 개를 저장하고, 새로 붙은 _id를 돌려준다. 실패하면 -1.
      * scaleId, themeId, beatOn: 걸을 때 쓰던 소리 설정. 다시 듣기에서 같은 소리로 재생하려고 함께 저장한다.
      * (볼륨과 화면 켜두기는 "듣는 환경" 설정이라 곡에 저장하지 않는다)
+     * melodyVersion: 이 곡을 만든 멜로디 알고리즘 버전 (새 곡은 SongComposer.VERSION)
      */
     public long insertSong(String title, long startedAt, int durationSec,
                            int steps, int avgBpm, long seed, String bpmSeries,
-                           int scaleId, int themeId, boolean beatOn) {
+                           int scaleId, int themeId, boolean beatOn, int melodyVersion) {
         // ContentValues: "열 이름 → 값" 묶음. INSERT 문을 직접 쓰지 않고 이걸로 넣는다.
         ContentValues values = new ContentValues();
         values.put("title", title);
@@ -110,6 +122,7 @@ public class SongDbHelper extends SQLiteOpenHelper {
         values.put("scale_id", scaleId);
         values.put("theme_id", themeId);
         values.put("beat_on", beatOn ? 1 : 0);     // true → 1, false → 0
+        values.put("melody_version", melodyVersion);
 
         SQLiteDatabase db = getWritableDatabase(); // 쓰기 가능한 DB를 연다
         return db.insert(TABLE, null, values);     // songs 테이블에 한 줄 추가

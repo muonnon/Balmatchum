@@ -68,6 +68,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private int bpmCount;              // BPM을 몇 번 계산했는지 (평균 = bpmSum / bpmCount)
     private SongDbHelper dbHelper;                       // 곡 저장용 DB 도우미
     private long seed;                                   // 이번 걷기의 멜로디 시드
+    // 이번 걷기의 멜로디 알고리즘 버전. 엔진에 넣은 값과 DB에 저장하는 값이 반드시 같아야
+    // 다시 들을 때 똑같이 재생되므로, 한 변수에 담아 두 곳에서 같이 씀
+    private int melodyVersion = SongComposer.VERSION;
     private long startWallMs;                            // 걷기 시작 시각 (실제 시계, 날짜 표시용)
     private final StringBuilder bpmSeries = new StringBuilder(); // 걸음마다의 BPM을 "112,113,..."로 쌓는다
 
@@ -234,7 +237,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // 엔진이 이 시드로 멜로디를 만들게 한다 (저장한 시드로 같은 곡을 다시 만들 수 있게)
         // 새 곡은 항상 최신 멜로디 알고리즘(SongComposer.VERSION = 1)으로 만든다.
         // applySettings()가 onResume에서 이미 불렸으므로 지금 테마·음계로 곡의 개성이 정해진다.
-        engine.setSeed(seed, SongComposer.VERSION);
+        melodyVersion = SongComposer.VERSION;
+        engine.setSeed(seed, melodyVersion);
         bpmSeries.setLength(0);                   // 이전 걷기의 BPM 기록 비우기
         // "화면 켜두기"가 켜져 있으면 걷는 동안 화면이 꺼지지 않게 함
         // FLAG_KEEP_SCREEN_ON: 이 화면이 보이는 동안 자동으로 화면이 꺼지는 것을 막는 표시(권한 필요 없음)
@@ -280,9 +284,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if (bpmCount > 0) {
             String title = new SimpleDateFormat("M/d HH:mm", Locale.KOREA)
                     .format(new Date(startWallMs)) + "의 걸음 곡";   // 예: "11/16 13:05의 걸음 곡"
-            // 마지막 세 값: 걸을 때 쓰던 스케일, 테마, 비트 설정 (다시 듣기에서 같은 소리로 재생하려고)
+            // 마지막 네 값: 걸을 때 쓰던 스케일, 테마, 비트 설정, 멜로디 알고리즘 버전 (다시 듣기에서 같은 소리로 재생하려고)
             long id = dbHelper.insertSong(title, startWallMs, (int) sec, steps, avg, seed, bpmSeries.toString(),
-                    scaleId, themeId, beatOn);
+                    scaleId, themeId, beatOn, melodyVersion);
             // insert는 실패하면 -1을 돌려준다. 실패를 모르고 넘어가지 않도록 Logcat에 남긴다.
             if (id == -1) android.util.Log.e("BAL", "곡 저장 실패: " + title);
         }

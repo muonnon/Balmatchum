@@ -215,6 +215,8 @@ public class SongDetailActivity extends AppCompatActivity {
             songScaleId = c.getInt(c.getColumnIndexOrThrow("scale_id"));
             songThemeId = c.getInt(c.getColumnIndexOrThrow("theme_id"));
             songBeatOn = c.getInt(c.getColumnIndexOrThrow("beat_on")) == 1;   // 1 → true, 0 → false
+            // DB 버전 3에서 추가된 열. 업데이트 전에 저장된 곡은 0(옛 알고리즘), 새 곡은 1
+            int melodyVersion = c.getInt(c.getColumnIndexOrThrow("melody_version"));
 
             // ── 글자 채우기 ──
             // 상단 바: 뒤로가기(<) 화살표 + 곡 제목. 화살표를 누르면 finish() → 목록으로
@@ -239,9 +241,8 @@ public class SongDetailActivity extends AppCompatActivity {
             // 순서 중요: 스케일을 먼저 정해야 loadReplay가 그 스케일에 맞는 시작 음 위치로 되감아요.
             // (반대로 하면 이전 스케일 기준으로 시작 위치가 정해져서 멜로디가 달라질 수 있음)
             applySongSound();
-            // 마지막 값 = 멜로디 알고리즘 버전. 아직 DB에 버전 열이 없으므로 지금은 모두 옛 곡(0)으로 재생
-            // (DB v3에서 곡마다 저장한 melody_version을 읽도록 바꿀 예정)
-            engine.loadReplay(seed, series, 0);
+            // 마지막 값 = 곡에 저장된 멜로디 알고리즘 버전 → 옛 곡은 옛 알고리즘·옛 소리, 새 곡은 SongComposer로 재생
+            engine.loadReplay(seed, series, melodyVersion);
             totalMs = engine.getTotalMs();
             // SeekBar의 최댓값을 전체 길이(ms)로 → SeekBar 값 1 = 1ms라서 위치 계산이 간단해짐
             // (int)로 바꾸는 이유: setMax는 int만 받음. int 최대 약 24일이라 걷기 곡 길이로는 충분
