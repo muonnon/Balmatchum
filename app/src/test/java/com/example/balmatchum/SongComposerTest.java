@@ -104,6 +104,38 @@ public class SongComposerTest {
         assertTrue("검사한 음이 너무 적음: " + checkedNotes, checkedNotes > 100_000);
     }
 
+    /**
+     * 코드가 4마디마다 바뀌는지 확인: 베이스(마디 첫 칸의 코드 뿌리음)가 4마디 묶음 안에서는 항상 같은 음이어야 해요.
+     * (진행에 따라 묶음이 바뀔 때 같은 뿌리음이 연속될 수도 있어서, "묶음 안에서 같음"만 검사)
+     */
+    @Test
+    public void chordChangesEveryFourBars() {
+        int bass = SoundPalette.indexOf(SoundPalette.BASS);
+        for (int[] scale : MusicEngine.SCALES) {
+            for (long seed = 0; seed < 30; seed++) {
+                SongComposer c = new SongComposer(seed, 0, scale);
+                float groupRate = 0;
+                boolean sawChange = false;
+                for (int bar = 0; bar < 32; bar++) {
+                    for (int s = 0; s < 16; s++) {
+                        c.step(110);
+                        if (s != 0) continue;
+                        float r = -1;
+                        for (int i = 0; i < c.count; i++) if (c.sound[i] == bass) r = c.rate[i];
+                        assertTrue("마디 첫 칸에 베이스가 없음 (bar=" + bar + ")", r > 0);
+                        if (bar % 4 == 0) {
+                            if (bar > 0 && r != groupRate) sawChange = true;
+                            groupRate = r;                     // 새 4마디 묶음의 뿌리음
+                        } else {
+                            assertEquals("4마디 안에서 코드가 바뀜 (bar=" + bar + ")", groupRate, r, 0f);
+                        }
+                    }
+                }
+                assertTrue("32마디 동안 코드가 한 번도 안 바뀜 (seed=" + seed + ")", sawChange);
+            }
+        }
+    }
+
     @Test
     public void melodyTimbresComeFromThemePool() {
         for (int theme = 0; theme < 3; theme++) {
