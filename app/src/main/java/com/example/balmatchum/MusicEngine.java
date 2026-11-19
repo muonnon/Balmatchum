@@ -52,14 +52,9 @@ public class MusicEngine {
     /** 화면에 보여줄 사운드 테마 이름. 칸 번호가 곧 theme_id */
     public static final String[] THEME_NAMES = {"8bit", "Lo-fi", "피아노"};
 
-    // 테마별 소리 파일. [테마 번호][0=멜로디, 1=킥, 2=하이햇]
-    // R.raw.xxx 는 res/raw/xxx.wav 파일을 가리키는 번호(안드로이드가 자동으로 만들어 줌)
-    private static final int[][] THEME_RES = {
-            {R.raw.note, R.raw.kick, R.raw.hat},                   // 0 = 8bit
-            {R.raw.lofi_note, R.raw.lofi_kick, R.raw.lofi_hat},    // 1 = Lo-fi
-            {R.raw.piano_note, R.raw.piano_kick, R.raw.piano_hat}, // 2 = 피아노
-    };
-    private static final int SOUND_COUNT = 9;                // 불러올 소리 파일 개수 (테마 3개 × 3개)
+    // 소리 파일 목록과 테마별 소리 표는 SoundPalette.java에 한곳으로 모았어요.
+    // 불러올 소리 개수 = 표의 길이 (기존 9개 + 새 소리 12개 = 21개). 소리를 추가하면 자동으로 따라 늘어나요.
+    private static final int SOUND_COUNT = SoundPalette.ALL.length;
 
     // 1분(60초)을 나노초로 쓴 값. 1초 = 10억(1_000_000_000) 나노초
     // (숫자 사이 _ 는 읽기 쉽게 쓴 것으로 값에는 영향 없음, 끝의 L은 long 타입이라는 뜻)
@@ -74,8 +69,12 @@ public class MusicEngine {
     private final SoundPool pool;      // 소리들을 담아 두고 재생하는 SoundPool
 
     // SoundPool에 불러온 소리 각각의 번호(ID). 재생할 때 이 번호로 "어떤 소리"인지 알려줘요.
-    // [테마 번호][0=멜로디, 1=킥, 2=하이햇] 순서로 9개를 담아 둬요.
-    private final int[][] soundIds = new int[3][3];
+    // 칸 번호 = SoundPalette.ALL의 칸 번호 (예: soundIds[SoundPalette.indexOf("snare")] = 스네어의 ID)
+    private final int[] soundIds = new int[SOUND_COUNT];
+
+    // 옛 알고리즘(melody_version 0)용 테마별 소리 ID. [테마 번호][0=멜로디, 1=킥, 2=하이햇]
+    // SoundPalette.LEGACY 표의 이름을 ID로 바꿔 둔 것 → 업데이트 전과 똑같은 9개 소리를 써요.
+    private final int[][] legacyIds = new int[SoundPalette.LEGACY.length][3];
 
     // ─────────── 소리 설정 (applySettings로 바꿈) ───────────
     // 화면 스레드가 바꾸고 음악 스레드가 읽으므로 volatile
@@ -89,7 +88,7 @@ public class MusicEngine {
     // 안 붙이면 음악 스레드가 예전 값을 계속 보고 있을 수 있어요.
     private volatile int bpm = 100;              // 현재 박자 (1분당 박 수). 처음엔 100
     private volatile boolean running = false;    // 음악 스레드가 돌고 있는지. false가 되면 스레드가 반복을 멈춤
-    private volatile int loadedCount = 0;        // 불러오기가 끝난 소리 개수 (9개가 되면 재생 준비 완료)
+    private volatile int loadedCount = 0;        // 불러오기가 끝난 소리 개수 (SOUND_COUNT개가 되면 재생 준비 완료)
 
     private Thread thread;                       // 박자를 진행하는 음악 스레드
 
@@ -124,29 +123,34 @@ public class MusicEngine {
     private long melodyHash = 0;                 // 멜로디 요약값 (음이 하나라도 다르면 값이 달라짐)
 
     /**
-     * 엔진을 만들 때 소리 파일 3개를 SoundPool에 미리 불러와요.
+     * 엔진을 만들 때 SoundPalette의 소리 파일 전부(21개)를 SoundPool에 미리 불러와요.
      * 미리 불러 두면 재생할 때 지연이 거의 없어요.
      *
      * @param c 소리 파일(res/raw)을 읽기 위한 Context (보통 Activity를 넘김)
      */
     public MusicEngine(Context c) {
-        // setMaxStreams(6): 동시에 최대 6개 소리까지 겹쳐서 재생 가능
-        // (킥, 하이햇, 멜로디가 같은 칸에서 동시에 나기도 하고, 이전 소리 꼬리가 남아 있기도 해서 여유 있게)
-        pool = new SoundPool.Builder().setMaxStreams(6).build();
+        // setMaxStreams(10): 동시에 최대 10개 소리까지 겹쳐서 재생 가능
+        // 새 알고리즘은 한 칸에서 킥·스네어·하이햇·장식 타악기·베이스·멜로디가 함께 날 수 있고(최대 6개),
+        // 길게 울리는 소리(열린 하이햇, 마림바 등)의 꼬리도 남아 있어서 6개로는 모자라 10개로 늘림.
+        // (꽉 차면 SoundPool이 가장 오래된 소리를 끊고 새 소리를 냄)
+        pool = new SoundPool.Builder().setMaxStreams(10).build();
 
         // load(Context, 리소스, 우선순위): 소리 파일을 불러오고, 그 소리의 번호를 돌려줌
         // 마지막 1은 우선순위인데, 현재 안드로이드에서는 효과가 없어 관례적으로 1을 넣어요.
-        // 테마 3개 × 소리 3개 = 9개를 모두 미리 불러와요.
-        // 재생 중에 테마를 바꿔도 바로 다른 소리를 낼 수 있게, 쓸 테마만이 아니라 전부 불러 둬요.
-        // (소리 파일이 작아서 9개를 다 불러도 메모리 부담이 크지 않음)
-        for (int t = 0; t < THEME_RES.length; t++) {           // t = 테마 번호
-            for (int k = 0; k < 3; k++) {                       // k = 0 멜로디, 1 킥, 2 하이햇
-                soundIds[t][k] = pool.load(c, THEME_RES[t][k], 1);
+        // 재생 중에 테마를 바꾸거나 곡마다 다른 소리를 골라도 바로 낼 수 있게 전부 불러 둬요.
+        // (모두 1초 안팎의 작은 파일이라 21개를 다 불러도 메모리 부담이 크지 않음)
+        for (int i = 0; i < SOUND_COUNT; i++) {
+            soundIds[i] = pool.load(c, SoundPalette.ALL[i].resId, 1);
+        }
+        // 옛 알고리즘용 표: 이름 → 방금 불러온 ID
+        for (int t = 0; t < SoundPalette.LEGACY.length; t++) {     // t = 테마 번호
+            for (int k = 0; k < 3; k++) {                           // k = 0 멜로디, 1 킥, 2 하이햇
+                legacyIds[t][k] = soundIds[SoundPalette.indexOf(SoundPalette.LEGACY[t][k])];
             }
         }
 
         // 소리 불러오기가 끝날 때마다 호출돼요. (load()는 바로 끝나지 않고 뒤에서 천천히 불러옴)
-        // status가 0이면 성공 → 성공한 개수를 세어 9개가 되면 isReady()가 true가 돼요.
+        // status가 0이면 성공 → 성공한 개수를 세어 SOUND_COUNT(21)개가 되면 isReady()가 true가 돼요.
         // Logcat에서 태그 "BAL"로 검색하면 볼 수 있어요.
         pool.setOnLoadCompleteListener((p, id, status) -> {
             if (status == 0) loadedCount++;
@@ -155,7 +159,7 @@ public class MusicEngine {
     }
 
     /**
-     * 소리 9개를 모두 불러왔는지 알려줘요.
+     * 소리 SOUND_COUNT(21)개를 모두 불러왔는지 알려줘요.
      * 불러오기 전에 재생하면 첫 몇 음이 소리 없이 지나가므로, 재생 버튼에서 확인하는 데 써요.
      */
     public boolean isReady() { return loadedCount >= SOUND_COUNT; }
@@ -183,7 +187,7 @@ public class MusicEngine {
         // (같은 음계를 다시 넣을 때는 아무 변화 없음 → 다시 듣기 재현에는 영향 없음)
         if (newScale != scale) degree = clamp(degree, 0, newScale.length - 1);
         this.scale = newScale;
-        this.themeId = clamp(themeId, 0, THEME_RES.length - 1);
+        this.themeId = clamp(themeId, 0, SoundPalette.LEGACY.length - 1);
         this.volume = clamp(volumePercent, 0, 100) / 100f;   // 70 → 0.7 (100f로 나눠야 소수점이 남음)
         this.beatOn = beatOn;
     }
@@ -371,7 +375,7 @@ public class MusicEngine {
         // 모든 볼륨에 전체 볼륨(volume)을 곱해요. 예) 하이햇 0.6 × 볼륨 0.7 = 0.42
         // 필드를 지역 변수에 한 번 복사해 두는 이유: 이번 칸을 연주하는 도중에 화면이 설정을 바꿔도
         // 한 칸 안에서는 같은 테마·볼륨으로 일관되게 연주하려고
-        int[] ids = soundIds[themeId];      // 지금 테마의 [멜로디, 킥, 하이햇] 소리 번호
+        int[] ids = legacyIds[themeId];     // 지금 테마의 [멜로디, 킥, 하이햇] 소리 번호 (옛 9개 소리)
         int[] sc = scale;                   // 지금 음계
         float vol = volume;
 
