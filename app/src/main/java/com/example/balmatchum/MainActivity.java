@@ -231,7 +231,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         startMs = SystemClock.elapsedRealtime();     // 시작 시각 기억 (걸은 시간 계산용)
         startWallMs = System.currentTimeMillis(); // 날짜 표시용 실제 시각
         seed = startWallMs;                       // 시작 시각을 시드로 쓰면 곡마다 다른 값이 된다
-        engine.setSeed(seed);                     // 엔진이 이 시드로 멜로디를 만들게 한다 (저장한 시드로 같은 곡을 다시 만들 수 있게)
+        // 엔진이 이 시드로 멜로디를 만들게 한다 (저장한 시드로 같은 곡을 다시 만들 수 있게)
+        // 새 곡은 항상 최신 멜로디 알고리즘(SongComposer.VERSION = 1)으로 만든다.
+        // applySettings()가 onResume에서 이미 불렸으므로 지금 테마·음계로 곡의 개성이 정해진다.
+        engine.setSeed(seed, SongComposer.VERSION);
         bpmSeries.setLength(0);                   // 이전 걷기의 BPM 기록 비우기
         // "화면 켜두기"가 켜져 있으면 걷는 동안 화면이 꺼지지 않게 함
         // FLAG_KEEP_SCREEN_ON: 이 화면이 보이는 동안 자동으로 화면이 꺼지는 것을 막는 표시(권한 필요 없음)

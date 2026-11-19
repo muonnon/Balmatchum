@@ -18,6 +18,11 @@ import java.util.Random;            // 무작위 숫자를 만드는 도구 (시
  *  - 음높이는 멜로디 소리 파일 하나를 빠르게/느리게 재생해서 바꿔요. (빠르게 재생하면 음이 높아짐)
  *  - applySettings()로 음계(스케일), 사운드 테마(8bit/Lo-fi/피아노), 볼륨, 비트 켜기/끄기를 정해요.
  *
+ * 멜로디 알고리즘 버전 (곡마다 DB의 melody_version에 저장):
+ *  - 버전 0 (옛 곡): 위에 적은 방식 그대로. legacyTick()에 원래 코드를 보존해 두고 옛 9개 소리만 써요.
+ *  - 버전 1 (새 곡): SongComposer가 프레이즈 반복·코드 진행·베이스·리듬 패턴을 만들어요. composerTick()
+ *    소리는 SoundPalette의 테마별 소리 풀에서 시드로 골라요.
+ *
  * 두 가지 모드가 있어요.
  *  1) 실시간 모드 (걷기 화면): 걸음이 들어올 때마다 화면이 setBpm()으로 박자를 바꿔 줘요.
  *  2) 다시 듣기 모드 (곡 상세 화면): loadReplay()로 저장된 seed와 bpm_series를 넣으면,
@@ -41,7 +46,8 @@ public class MusicEngine {
     // 모든 스케일의 가장 높은 음은 12반음(한 옥타브 위 도) 이하여야 해요.
     // 이유: 음높이를 SoundPool의 재생 속도로 만드는데, 재생 속도는 최대 2.0배까지만 돼요. (12반음 = 정확히 2.0배)
     // 주의: 배열 순서를 바꾸면 이미 저장된 곡의 scale_id가 다른 음계를 가리키게 되므로, 새 음계는 뒤에만 추가해요.
-    private static final int[][] SCALES = {
+    // private이 아닌 이유: 같은 패키지의 단위 테스트(SongComposerTest)가 모든 음계를 검사하려고 읽음
+    static final int[][] SCALES = {
             {0, 2, 4, 7, 9, 12},         // 펜타토닉 (기존에 쓰던 음계 그대로)
             {0, 3, 5, 7, 10, 12},        // 마이너 펜타토닉
             {0, 2, 4, 5, 7, 9, 11, 12},  // 장음계
@@ -103,6 +109,14 @@ public class MusicEngine {
     // Random에 같은 시드(seed)를 넣으면 항상 같은 순서로 숫자가 나오므로, 저장한 시드로 멜로디를 재현할 수 있어요.
     private Random random = new Random();
     private long seed;                           // 마지막으로 정한 시드 (처음으로 되감을 때 다시 쓰려고 기억)
+
+    // ─────────── 멜로디 알고리즘 버전 ───────────
+    // 0 = 옛 알고리즘 (펜타토닉 한 칸 위/아래 무작위 이동 + 옛 9개 소리). 업데이트 전에 저장된 곡
+    // 1 = 새 알고리즘 (SongComposer: 프레이즈·코드 진행·베이스 + 새 소리 풀). 지금 새로 만드는 곡
+    // 곡마다 DB의 melody_version에 저장해 두고, 다시 들을 때 그 버전으로 연주해야 저장 당시와 똑같이 들려요.
+    private int melodyVersion = 0;
+    // 버전 1일 때 쓰는 작곡기. 곡의 처음으로 되감을 때마다(resetPosition) 시드로 새로 만들어요.
+    private SongComposer composer;
 
     // ─────────── 다시 듣기(재생) 모드용 ───────────
     // series가 null이면 실시간 모드, null이 아니면 다시 듣기 모드예요.
@@ -208,10 +222,15 @@ public class MusicEngine {
      * 같은 시드를 넣으면 멜로디가 같은 순서로 위/아래로 움직여서 같은 곡을 다시 만들 수 있어요.
      * 시작 음 위치, 칸 번호, 가상 시계도 처음으로 되돌려야 매번 같은 곳에서 출발해요.
      *
-     * @param seed 이번 곡의 시드 (DB의 seed 열에 저장되는 값)
+     * 주의: applySettings()(테마·음계)를 먼저 불러 둬야 해요.
+     *       버전 1은 여기서 "지금 테마·음계"로 곡의 개성(음색, 코드 진행 등)을 정하기 때문이에요.
+     *
+     * @param seed          이번 곡의 시드 (DB의 seed 열에 저장되는 값)
+     * @param melodyVersion 멜로디 알고리즘 버전 (새 곡은 SongComposer.VERSION)
      */
-    public void setSeed(long seed) {
+    public void setSeed(long seed, int melodyVersion) {
         this.seed = seed;
+        this.melodyVersion = melodyVersion;
         resetPosition();
     }
 
@@ -239,15 +258,19 @@ public class MusicEngine {
     /**
      * 다시 듣기 모드로 곡을 불러와요. 재생은 하지 않고 처음 위치에 준비만 해요. (재생은 start())
      *
-     * @param seed   DB에 저장된 멜로디 시드
-     * @param series DB에 저장된 걸음마다의 BPM 기록
+     * 주의: applySettings()로 곡의 테마·음계를 먼저 넣어 둔 뒤 불러야 해요. (setSeed와 같은 이유)
+     *
+     * @param seed          DB에 저장된 멜로디 시드
+     * @param series        DB에 저장된 걸음마다의 BPM 기록
+     * @param melodyVersion DB에 저장된 멜로디 알고리즘 버전 (옛 곡 0, 새 곡 1)
      */
-    public void loadReplay(long seed, int[] series) {
+    public void loadReplay(long seed, int[] series, int melodyVersion) {
         stop();                       // 혹시 재생 중이면 멈추고
         waitForThreadEnd();           // 음악 스레드가 완전히 끝날 때까지 기다린 뒤 값을 바꿔요 (두 스레드가 동시에 바꾸면 꼬임)
         this.series = series;
         this.startNs = seriesStartNs(series);
         this.seed = seed;
+        this.melodyVersion = melodyVersion;
         resetPosition();              // 시드로 Random을 새로 만들고 위치를 0으로
     }
 
@@ -289,7 +312,10 @@ public class MusicEngine {
      * 시드로 Random을 새로 만들어야 첫 음부터 같은 순서의 무작위 값이 다시 나와요.
      */
     private void resetPosition() {
-        random = new Random(seed);
+        random = new Random(seed);     // 옛 알고리즘(버전 0)용
+        // 버전 1: 작곡기를 시드로 새로 만들면 용도별 Random 3개도 처음 상태로 돌아가요
+        composer = melodyVersion >= SongComposer.VERSION ? new SongComposer(seed, themeId, scale) : null;
+        if (composer != null) Log.d("BAL_MELODY", "v1 곡 개성: seed=" + seed + " " + composer.describe());
         degree = startDegree(scale);   // 지금 음계의 가운데쯤에서 출발
         step = 0;
         seriesIndex = 0;
@@ -334,7 +360,14 @@ public class MusicEngine {
                     finished = true;
                     running = false;
                     // 멜로디 요약을 남겨요. 같은 곡을 두 번 끝까지 들었을 때 이 줄이 똑같으면 멜로디가 똑같은 것.
-                    Log.d("BAL_MELODY", "곡 끝: seed=" + seed + " notes=" + noteCount + " hash=" + melodyHash);
+                    if (composer == null) {
+                        // 버전 0: 업데이트 전과 완전히 같은 형식 (옛 곡이 그대로인지 비교하려고 바꾸지 않음)
+                        Log.d("BAL_MELODY", "곡 끝: seed=" + seed + " notes=" + noteCount + " hash=" + melodyHash);
+                    } else {
+                        // 버전 1: 멜로디 해시(음높이·길이·소리 이름) + 리듬 해시(드럼·베이스)
+                        Log.d("BAL_MELODY", "곡 끝: v1 seed=" + seed + " notes=" + composer.getNoteCount()
+                                + " hash=" + composer.getMelodyHash() + " rhythm=" + composer.getRhythmHash());
+                    }
                     break;
                 }
 
@@ -370,6 +403,52 @@ public class MusicEngine {
 
         if (sound) Log.d("BAL", "step " + step);   // 디버깅용: 지금 칸 번호 기록
 
+        // 곡의 멜로디 버전에 따라 갈라짐. 옛 곡은 옛 코드를 한 글자도 바꾸지 않고 그대로 써요.
+        if (composer != null) composerTick(sound);
+        else legacyTick(sound);
+
+        // 이번 칸의 길이 = 16분음표 한 칸 = 한 박(1분 / bpm) / 4
+        // 예) 120 BPM → 60_000_000_000 / 120 / 4 = 125,000,000ns = 0.125초
+        long len = MINUTE_NS / bpm / 4;
+        positionNs += len;      // 가상 시계를 이번 칸 길이만큼 앞으로
+        return len;
+    }
+
+    /**
+     * 새 알고리즘(버전 1)으로 한 칸 연주해요.
+     * 무엇을 낼지는 SongComposer가 정하고, 여기서는 SoundPool로 소리만 내요.
+     *
+     * 비트 on/off 처리: 작곡기는 비트 설정을 모르고 항상 똑같이 계산해요. (= 난수 호출 순서가 항상 같음)
+     * 여기서 드럼 표시(isDrum)가 붙은 소리만 재생을 건너뛰므로, 비트를 꺼도 멜로디는 완전히 같아요.
+     *
+     * @param sound false면 작곡기 상태만 진행하고 소리는 내지 않음 (seekTo에서 사용)
+     */
+    private void composerTick(boolean sound) {
+        SongComposer c = composer;
+        c.step(bpm);                        // 이번 칸에 낼 소리 계산 (소리를 내든 안 내든 꼭 불러야 함)
+        step = (step + 1) % 16;             // 로그의 칸 번호를 맞추려고 엔진 쪽 칸도 같이 진행
+        if (!sound) return;
+
+        float vol = volume;                 // 이번 칸 안에서는 같은 볼륨으로 (재생 중 설정이 바뀌어도 일관되게)
+        boolean beat = beatOn;
+        for (int i = 0; i < c.count; i++) {
+            if (c.isDrum[i] && !beat) continue;    // 비트를 껐으면 드럼만 건너뜀 (베이스·멜로디는 냄)
+            float v = c.volume[i] * vol;          // 강약 × 전체 볼륨
+            // play(소리번호, 왼쪽볼륨, 오른쪽볼륨, 우선순위, 반복횟수, 재생속도)
+            pool.play(soundIds[c.sound[i]], v, v, 1, 0, c.rate[i]);
+        }
+        if (c.melodyEvent) {
+            // 음마다 기록: 소리 이름 · 높이(반음) · 길이(칸) · 강약 → 두 번의 재생을 줄 단위로 비교할 수 있어요
+            Log.d("BAL_MELODY", "#" + c.getNoteCount() + " " + c.melodyName + " semi=" + c.melodySemi
+                    + " len=" + c.melodyLen + " vel=" + c.melodyVel + " bpm=" + bpm);
+        }
+    }
+
+    /**
+     * 옛 알고리즘(버전 0)으로 한 칸 연주해요. 업데이트 전의 tick() 내용을 그대로 옮긴 것.
+     * ★ 옛 곡이 예전과 똑같이 재생돼야 하므로 이 메서드 안의 계산은 고치지 마세요.
+     */
+    private void legacyTick(boolean sound) {
         // play(소리번호, 왼쪽볼륨, 오른쪽볼륨, 우선순위, 반복횟수, 재생속도)
         //   볼륨: 0.0 ~ 1.0 / 반복 0 = 한 번만 / 재생속도 1f = 원래 속도
         // 모든 볼륨에 전체 볼륨(volume)을 곱해요. 예) 하이햇 0.6 × 볼륨 0.7 = 0.42
@@ -417,12 +496,6 @@ public class MusicEngine {
 
         // 다음 칸으로. 15 다음은 다시 0 (% 16 은 16으로 나눈 나머지라 0~15를 빙글빙글 돎)
         step = (step + 1) % 16;
-
-        // 이번 칸의 길이 = 16분음표 한 칸 = 한 박(1분 / bpm) / 4
-        // 예) 120 BPM → 60_000_000_000 / 120 / 4 = 125,000,000ns = 0.125초
-        long len = MINUTE_NS / bpm / 4;
-        positionNs += len;      // 가상 시계를 이번 칸 길이만큼 앞으로
-        return len;
     }
 
     /**
