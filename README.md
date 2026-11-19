@@ -238,8 +238,27 @@ Balmatchum/
 
 ## 🎧 리소스 출처
 
-- 소리 샘플(`note.wav`, `kick.wav`, `hat.wav`): 프로그램으로 생성한 임시 8bit풍 소리 (외부 음원 사용 없음)
-- 외부 코드 인용: -
+### 소리 샘플 (`app/src/main/res/raw`)
+
+**기존 9개 — 자체 제작 (Python 합성)**
+
+- `note`, `kick`, `hat` (8bit), `lofi_note`, `lofi_kick`, `lofi_hat` (Lo-fi), `piano_note`, `piano_kick`, `piano_hat` (피아노)
+- 외부 음원을 쓰지 않고 프로그램으로 합성한 소리입니다. 업데이트 전에 저장된 곡(`melody_version` 0)은 이 9개만으로 재생됩니다.
+
+**새 소리 12개 — [Versilian Community Sample Library (VCSL)](https://github.com/sgossner/VCSL), CC0**
+
+| 용도 | 파일 |
+|------|------|
+| 멜로디 | `mel_fmpiano`, `mel_glockenspiel`, `mel_marimba`, `mel_piano` |
+| 베이스 | `bass_marimba` |
+| 리듬 | `v2_kick`, `snare`, `clap`, `v2_hat_closed`, `hat_open`, `shaker`, `woodblock` |
+
+- VCSL 샘플을 22050Hz 모노 16bit WAV로 변환하고, 앞부분 무음을 제거하고, 음량을 정규화했습니다.
+- CC0(퍼블릭 도메인) 라이선스라 출처 표기 의무는 없지만, 원 출처를 밝혀 둡니다.
+
+### 외부 코드 인용
+
+- 없음
 
 ---
 
