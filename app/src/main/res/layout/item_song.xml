@@ -35,6 +35,7 @@
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:maxLines="1"
+            android:textColor="@color/bal_text"
             android:textSize="16sp"
             android:textStyle="bold" />
 
@@ -44,7 +45,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textColor="@color/bal_text_sub"
             android:textSize="12sp" />
 
         <!-- 걸음 수 · 평균 BPM (예: "1,240걸음 · 평균 108 BPM") -->
@@ -52,15 +53,17 @@
             android:id="@+id/tvInfo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textColor="@color/bal_text_sub"
             android:textSize="12sp" />
     </LinearLayout>
 
-    <!-- 오른쪽 "보기". 카드 전체를 누르면 열리므로 따로 클릭 동작은 없는 표시용 글자 -->
+    <!-- 오른쪽 "보기". 카드 전체를 누르면 열리므로 따로 클릭 동작은 없는 표시용 글자.
+         주 색(녹색)으로 칠해서 "누르면 열린다"는 느낌을 줌 (표면색 카드 위에서도 잘 보임) -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="보기"
+        android:textColor="@color/bal_primary"
         android:textSize="13sp"
         android:textStyle="bold" />
 </LinearLayout>

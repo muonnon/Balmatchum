@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 곡 카드에 들어가는 음표 아이콘. tint로 앱 테마의 강조색을 칠함 -->
+<!-- 곡 카드에 들어가는 음표 아이콘. tint로 주 색(bal_primary, 녹색)을 칠함 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:tint="?attr/colorPrimary"
+    android:tint="@color/bal_primary"
     android:viewportWidth="24"
     android:viewportHeight="24">
     <path
-        android:fillColor="#FFFFFFFF"
+        android:fillColor="@color/white"
         android:pathData="M12,3v10.55c-0.59,-0.34 -1.27,-0.55 -2,-0.55 -2.21,0 -4,1.79 -4,4s1.79,4 4,4 4,-1.79 4,-4V7h4V3h-6z" />
 </vector>

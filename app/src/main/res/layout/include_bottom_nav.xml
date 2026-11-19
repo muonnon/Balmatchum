@@ -9,7 +9,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="?attr/colorOutlineVariant" />
+        android:background="@color/bal_outline" />
 
     <!-- BottomNavigationView: 하단 탭 위젯.
          menu            : 탭 목록 (res/menu/bottom_nav.xml)
@@ -19,13 +19,20 @@
                            글자 아래가 잘림 → 여백도 10dp로 줄여서 아이콘+글자가 64dp 안에 들어가게 함
          labelVisibilityMode="labeled": 모든 탭의 글자를 항상 보여줌 (기본값은 탭이 4개 이상이면 선택된 탭만 보임)
          itemBackground  : 선택된 칸 전체를 연하게 칠하는 배경 (bg_nav_item.xml)
-         itemTextAppearanceActive/Inactive: 선택된 탭 글자는 굵게 -->
+         itemTextAppearanceActive/Inactive: 선택된 탭 글자는 굵게
+         background      : 탭 바 전체 바탕색 (표면색 bal_surface)
+         itemIconTint / itemTextColor: 아이콘·글자 색. res/color/nav_item_color.xml이 상태에 따라
+                           선택된 탭 = 흰색(녹색 칸 위), 선택 안 된 탭 = 보조 글자색으로 바꿔 줌
+         주의: itemTextColor를 적으면 TextAppearance 스타일 안의 글자색보다 이 값이 우선함 -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"
         android:layout_height="64dp"
         android:minHeight="64dp"
+        android:background="@color/bal_surface"
         app:itemBackground="@drawable/bg_nav_item"
+        app:itemIconTint="@color/nav_item_color"
+        app:itemTextColor="@color/nav_item_color"
         app:itemIconSize="20dp"
         app:itemPaddingBottom="10dp"
         app:itemPaddingTop="10dp"

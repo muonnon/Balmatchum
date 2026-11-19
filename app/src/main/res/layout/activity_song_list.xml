@@ -4,11 +4,17 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bal_primary_dark"
     android:fitsSystemWindows="true">
+    <!-- 바깥 FrameLayout 배경 = 진한 녹색(bal_primary_dark).
+         fitsSystemWindows 때문에 이 FrameLayout은 상태바·내비게이션바 높이만큼 안쪽 여백을 가져요.
+         Android 15+에서는 앱이 상태바 뒤까지 그려지므로, 그 여백 부분에 이 배경색이 보여서 "상태바 색"이 돼요. -->
 
+<!-- 안쪽 내용 전체의 배경 = 화면 배경색(아이보리) -->
 <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bal_background"
     android:orientation="vertical">
 
     <!-- 1. 공통 상단 바 ("걸음 곡 기록") -->
@@ -39,9 +45,14 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="저장된 곡 0개"
+                android:textColor="@color/bal_text"
                 android:textSize="14sp" />
 
-            <!-- 정렬 Spinner를 테두리 상자(bg_outline_box)로 감쌈 (와이어프레임의 "최신순 ▾" 상자) -->
+            <!-- 정렬 Spinner를 테두리 상자(bg_outline_box)로 감쌈 (와이어프레임의 "최신순 ▾" 상자).
+                 Spinner 속성:
+                   backgroundTint : Spinner 배경 그림(오른쪽 ▾ 화살표)의 색 → 보조 글자색
+                   popupBackground: 눌렀을 때 펼쳐지는 목록의 배경 → 화면 배경색
+                 항목 글자색은 테마의 android:textColorPrimary(bal_text)를 따라감 -->
             <FrameLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -50,7 +61,9 @@
                 <Spinner
                     android:id="@+id/spSort"
                     android:layout_width="wrap_content"
-                    android:layout_height="44dp" />
+                    android:layout_height="44dp"
+                    android:backgroundTint="@color/bal_text_sub"
+                    android:popupBackground="@color/bal_background" />
             </FrameLayout>
         </LinearLayout>
 
@@ -75,6 +88,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="아직 저장된 곡이 없어요.\n걷기를 마치면 여기에 곡이 생겨요."
+            android:textColor="@color/bal_text_sub"
             android:visibility="gone" />
 
         <!-- 4. 맨 아래 작은 안내 -->
@@ -84,7 +98,7 @@
             android:layout_marginTop="8dp"
             android:gravity="center"
             android:text="항목을 길게 누르면 삭제 확인 대화상자"
-            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textColor="@color/bal_text_sub"
             android:textSize="12sp" />
     </LinearLayout>
 

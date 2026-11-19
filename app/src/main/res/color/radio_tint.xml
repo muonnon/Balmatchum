@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 라디오 버튼 동그라미 색 (RadioButton의 app:buttonTint에 사용)
+     - 선택됨: 주 색(녹색)
+     - 선택 안 됨: 보조 글자색 (빈 동그라미 테두리가 배경에 묻히지 않게) -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/bal_primary" android:state_checked="true" />
+    <item android:color="@color/bal_text_sub" />
+</selector>

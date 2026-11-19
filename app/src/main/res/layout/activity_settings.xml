@@ -6,11 +6,17 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bal_primary_dark"
     android:fitsSystemWindows="true">
+    <!-- 바깥 FrameLayout 배경 = 진한 녹색(bal_primary_dark).
+         fitsSystemWindows 때문에 이 FrameLayout은 상태바·내비게이션바 높이만큼 안쪽 여백을 가져요.
+         Android 15+에서는 앱이 상태바 뒤까지 그려지므로, 그 여백 부분에 이 배경색이 보여서 "상태바 색"이 돼요. -->
 
+<!-- 안쪽 내용 전체의 배경 = 화면 배경색(아이보리) -->
 <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bal_background"
     android:orientation="vertical">
 
     <!-- 1. 공통 상단 바 ("설정 · 테마") -->
@@ -39,10 +45,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="스케일 (분위기)"
+            android:textColor="@color/bal_text"
             android:textSize="15sp"
             android:textStyle="bold" />
 
-        <!-- 가로 가득한 Spinner(높이 48dp)를 테두리 상자로 감쌈 -->
+        <!-- 가로 가득한 Spinner(높이 48dp)를 테두리 상자로 감쌈.
+             backgroundTint: ▾ 화살표 색, popupBackground: 펼쳐지는 목록 배경 (글자색은 테마의 bal_text) -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -52,7 +60,9 @@
             <Spinner
                 android:id="@+id/spScale"
                 android:layout_width="match_parent"
-                android:layout_height="48dp" />
+                android:layout_height="48dp"
+                android:backgroundTint="@color/bal_text_sub"
+                android:popupBackground="@color/bal_background" />
         </FrameLayout>
 
         <!-- ───── 사운드 테마 (항목 사이 간격 28dp) ───── -->
@@ -61,6 +71,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
             android:text="사운드 테마"
+            android:textColor="@color/bal_text"
             android:textSize="15sp"
             android:textStyle="bold" />
 
@@ -72,14 +83,18 @@
             android:layout_marginTop="4dp"
             android:orientation="vertical">
 
-            <!-- minHeight 40dp: Material 라디오 버튼의 기본 최소 높이(48dp)를 와이어프레임 크기로 줄임 -->
+            <!-- minHeight 40dp: Material 라디오 버튼의 기본 최소 높이(48dp)를 와이어프레임 크기로 줄임.
+                 buttonTint: 동그라미 색 (선택됨 = 주 색, 선택 안 됨 = 보조 글자색, res/color/radio_tint.xml)
+                 textColor : 옆 글자는 본문 글자색 -->
             <RadioButton
                 android:id="@+id/rbTheme8bit"
                 android:layout_width="match_parent"
                 android:layout_height="40dp"
                 android:minHeight="40dp"
                 android:text="8bit"
-                android:textSize="16sp" />
+                android:textColor="@color/bal_text"
+                android:textSize="16sp"
+                app:buttonTint="@color/radio_tint" />
 
             <RadioButton
                 android:id="@+id/rbThemeLofi"
@@ -87,7 +102,9 @@
                 android:layout_height="40dp"
                 android:minHeight="40dp"
                 android:text="Lo-fi"
-                android:textSize="16sp" />
+                android:textColor="@color/bal_text"
+                android:textSize="16sp"
+                app:buttonTint="@color/radio_tint" />
 
             <RadioButton
                 android:id="@+id/rbThemePiano"
@@ -95,7 +112,9 @@
                 android:layout_height="40dp"
                 android:minHeight="40dp"
                 android:text="피아노"
-                android:textSize="16sp" />
+                android:textColor="@color/bal_text"
+                android:textSize="16sp"
+                app:buttonTint="@color/radio_tint" />
         </RadioGroup>
 
         <!-- ───── 볼륨 ───── -->
@@ -112,6 +131,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="볼륨"
+                android:textColor="@color/bal_text"
                 android:textSize="15sp"
                 android:textStyle="bold" />
 
@@ -120,31 +140,42 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="70%"
+                android:textColor="@color/bal_text"
                 android:textSize="15sp" />
         </LinearLayout>
 
-        <!-- max="100": 0 ~ 100 사이 값 -->
+        <!-- max="100": 0 ~ 100 사이 값.
+             막대 색: progressTint = 채워진 부분(주 색), progressBackgroundTint = 빈 부분(보조 글자색. SeekBar가 빈 부분을 자동으로 반투명하게 그려서 실제로는 연한 회녹색으로 보임),
+                      thumbTint = 끌 수 있는 동그라미(주 색) -->
         <SeekBar
             android:id="@+id/seekVolume"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:max="100" />
+            android:max="100"
+            android:progressBackgroundTint="@color/bal_text_sub"
+            android:progressTint="@color/bal_primary"
+            android:thumbTint="@color/bal_primary" />
 
         <!-- ───── 스위치 2개 (각 48dp + 아래 얇은 구분선) ───── -->
-        <!-- SwitchCompat: 켜기/끄기 스위치. 글자(text)는 왼쪽, 스위치는 오른쪽 -->
+        <!-- SwitchCompat: 켜기/끄기 스위치. 글자(text)는 왼쪽, 스위치는 오른쪽.
+             thumbTint: 동그란 손잡이 색 (res/color/switch_thumb.xml: 켜짐 = 주 색, 꺼짐 = 아이보리)
+             trackTint: 길쭉한 막대 색  (res/color/switch_track.xml: 켜짐 = 보조 녹색, 꺼짐 = 보조 글자색) -->
         <androidx.appcompat.widget.SwitchCompat
             android:id="@+id/swBeat"
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:layout_marginTop="28dp"
             android:text="비트(드럼) 켜기"
-            android:textSize="16sp" />
+            android:textColor="@color/bal_text"
+            android:textSize="16sp"
+            app:thumbTint="@color/switch_thumb"
+            app:trackTint="@color/switch_track" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="?attr/colorOutlineVariant" />
+            android:background="@color/bal_outline" />
 
         <androidx.appcompat.widget.SwitchCompat
             android:id="@+id/swKeepScreen"
@@ -152,12 +183,15 @@
             android:layout_height="48dp"
             android:layout_marginTop="8dp"
             android:text="걷는 동안 화면 켜두기"
-            android:textSize="16sp" />
+            android:textColor="@color/bal_text"
+            android:textSize="16sp"
+            app:thumbTint="@color/switch_thumb"
+            app:trackTint="@color/switch_track" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="?attr/colorOutlineVariant" />
+            android:background="@color/bal_outline" />
 
         <!-- 남는 세로 공간을 전부 차지하는 빈 칸 → 아래 [설정 초기화]를 화면 맨 아래로 밀어 냄.
              minHeight 28dp: 공간이 모자라 스크롤될 때도 스위치와 버튼 사이에 최소 28dp 간격 유지 -->
@@ -167,7 +201,8 @@
             android:layout_weight="1"
             android:minHeight="28dp" />
 
-        <!-- ───── 설정 초기화: 가로 가득, 높이 52dp, 테두리만 있는 알약(cornerRadius 26dp = 높이 절반) ───── -->
+        <!-- ───── 설정 초기화: 가로 가득, 높이 52dp, 테두리만 있는 알약(cornerRadius 26dp = 높이 절반) ─────
+             배경이 투명한 버튼이라 흰 글자는 아이보리 배경에 묻힘 → 글자·테두리를 주 색(녹색)으로 칠함 -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnReset"
             style="@style/Widget.Material3.Button.OutlinedButton"
@@ -176,9 +211,11 @@
             android:insetTop="0dp"
             android:insetBottom="0dp"
             android:text="설정 초기화"
+            android:textColor="@color/bal_primary"
             android:textSize="17sp"
             android:textStyle="bold"
-            app:cornerRadius="26dp" />
+            app:cornerRadius="26dp"
+            app:strokeColor="@color/bal_primary" />
 
         <TextView
             android:layout_width="match_parent"
@@ -186,7 +223,7 @@
             android:layout_marginTop="8dp"
             android:gravity="center"
             android:text="누르면 확인 대화상자가 열리고, 완료되면 토스트 표시"
-            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textColor="@color/bal_text_sub"
             android:textSize="12sp" />
     </LinearLayout>
     </ScrollView>

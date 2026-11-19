@@ -2,13 +2,12 @@ package com.example.balmatchum;
 
 import android.content.Context;          // 뷰를 만들 때 필요한 앱 정보
 import android.graphics.Canvas;          // 그림을 그리는 도화지. 선, 글자, 도형을 그리는 메서드를 가짐
-import android.graphics.Color;           // 색 상수 (Color.GRAY 등)
 import android.graphics.Paint;           // 붓. 색, 굵기, 글자 크기 같은 "그리는 방식"을 담음
 import android.graphics.Path;            // 여러 점을 이은 선(경로). 꺾은선 그래프를 한 번에 그리려고 사용
 import android.util.AttributeSet;        // XML에 적은 속성들(layout_width 등)
 import android.view.View;                // 모든 화면 요소의 부모 클래스
 
-import com.google.android.material.color.MaterialColors; // 앱 테마의 색을 꺼내 오는 도구
+import androidx.core.content.ContextCompat; // res/values/colors.xml에 정의한 색을 꺼내 오는 도구
 
 /**
  * BPM 변화 선 그래프를 그리는 Custom View.
@@ -20,7 +19,7 @@ import com.google.android.material.color.MaterialColors; // 앱 테마의 색을
  * 그래프 모양:
  *  - 가로(x축) = 시간. 곡의 처음(왼쪽) ~ 끝(오른쪽)
  *  - 세로(y축) = BPM. 아래가 느림, 위가 빠름
- *  - 꺾은선 = 걸음마다의 BPM을 이은 선
+ *  - 꺾은선 = 걸음마다의 BPM을 이은 선 (주 색). 선 아래는 보조색으로 연하게 채움
  *  - 세로 막대 = 지금 재생 위치 (SeekBar와 같은 위치)
  *
  * 사용법: setData()로 데이터를 넣고, 재생 중에는 setProgress()로 위치를 알려 줘요.
@@ -34,10 +33,12 @@ public class BpmGraphView extends View {
     // Paint(붓)는 onDraw()에서 매번 새로 만들면 느려지므로, 미리 만들어 두고 계속 써요.
     // ANTI_ALIAS_FLAG: 선의 계단 모양을 부드럽게 다듬어 줌
     private final Paint linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);      // 그래프 선
-    private final Paint axisPaint = new Paint(Paint.ANTI_ALIAS_FLAG);      // 축, 보조선
+    private final Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);      // 선 아래 영역 채우기 (보조색)
+    private final Paint axisPaint = new Paint(Paint.ANTI_ALIAS_FLAG);      // 축, 보조선(격자선)
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);      // 숫자 글자
     private final Paint progressPaint = new Paint(Paint.ANTI_ALIAS_FLAG);  // 재생 위치 막대
     private final Path path = new Path();                                  // 꺾은선 경로 (재사용)
+    private final Path fillPath = new Path();                              // 선 아래 채우기 경로 (재사용)
 
     private final float density;                // 1dp가 몇 픽셀인지 (기기마다 다름)
 
@@ -56,23 +57,28 @@ public class BpmGraphView extends View {
         super(context, attrs);
         density = getResources().getDisplayMetrics().density;
 
-        // 테마 색 가져오기: 다크 모드에서도 잘 보이도록 앱 테마에 정해진 색을 써요.
-        // (그냥 Color.BLACK을 쓰면 다크 모드의 검은 배경에서 글자가 안 보여요)
-        // 세 번째 값은 테마에서 색을 못 찾았을 때 쓸 기본색
-        int primary = MaterialColors.getColor(this, androidx.appcompat.R.attr.colorPrimary, Color.BLUE);
-        int onSurface = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant, Color.GRAY);
-        int accent = MaterialColors.getColor(this, com.google.android.material.R.attr.colorTertiary, Color.RED);
+        // 팔레트 색 가져오기: res/values/colors.xml에 이름 붙여 둔 색을 꺼내 와요.
+        // ContextCompat.getColor(context, R.color.이름)은 "그 이름의 색 값(int)"을 돌려줘요.
+        // 코드에 색 숫자(16진수 색 코드)를 직접 쓰지 않으면, 나중에 colors.xml만 고쳐도 그래프 색이 같이 바뀌어요.
+        int primary = ContextCompat.getColor(context, R.color.bal_primary);     // 그래프 선 (진한 녹색)
+        int secondary = ContextCompat.getColor(context, R.color.bal_secondary); // 선 아래 채우기 (보조 녹색)
+        int grid = ContextCompat.getColor(context, R.color.bal_outline);        // 격자선 (패널 배경보다 약간 어두운 색)
+        int textSub = ContextCompat.getColor(context, R.color.bal_text_sub);    // BPM 숫자·안내 글자
+        int accent = ContextCompat.getColor(context, R.color.bal_accent);       // 재생 위치 막대 (주황)
 
         linePaint.setColor(primary);
         linePaint.setStyle(Paint.Style.STROKE);          // STROKE: 안을 채우지 않고 선만 그림
         linePaint.setStrokeWidth(3 * density);           // 선 굵기 3dp
         linePaint.setStrokeJoin(Paint.Join.ROUND);       // 꺾이는 곳을 둥글게
 
-        axisPaint.setColor(onSurface);
-        axisPaint.setStrokeWidth(1 * density);
-        axisPaint.setAlpha(90);                          // 0(투명) ~ 255(불투명). 보조선이라 연하게
+        fillPaint.setColor(secondary);
+        fillPaint.setStyle(Paint.Style.FILL);            // FILL: 경로 안쪽을 채움
+        fillPaint.setAlpha(110);                         // 0(투명) ~ 255(불투명). 반투명하게 깔아서 격자선이 비쳐 보이게
 
-        textPaint.setColor(onSurface);
+        axisPaint.setColor(grid);                        // 격자색 자체가 연한 색이라 투명도는 따로 주지 않음
+        axisPaint.setStrokeWidth(1 * density);
+
+        textPaint.setColor(textSub);
         textPaint.setTextSize(12 * density);             // 글자 크기 12dp
 
         progressPaint.setColor(accent);
@@ -151,6 +157,16 @@ public class BpmGraphView extends View {
         }
         // 마지막 값은 곡 끝까지 이어지므로, 오른쪽 끝까지 같은 높이로 선을 연장
         path.lineTo(right, bottom - height * (values[values.length - 1] - min) / range);
+
+        // ── 선 아래 채우기 (보조색) ──
+        // 꺾은선 경로를 복사한 뒤 오른쪽 아래 → 왼쪽 아래로 내려 닫으면 "선과 바닥 사이 영역"이 돼요.
+        // 선보다 먼저 그려야 선이 채우기 위에 또렷하게 보여요.
+        fillPath.set(path);                                 // path를 그대로 복사 (새 객체를 만들지 않음)
+        fillPath.lineTo(right, bottom);                     // 오른쪽 끝에서 바닥으로
+        fillPath.lineTo(left + width * startNs[0] / total, bottom); // 바닥을 따라 첫 점 아래로
+        fillPath.close();                                   // 첫 점까지 이어서 닫음
+        canvas.drawPath(fillPath, fillPaint);
+
         canvas.drawPath(path, linePaint);
 
         // ── 재생 위치 막대 ──

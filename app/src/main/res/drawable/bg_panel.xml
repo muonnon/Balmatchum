@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 비주얼라이저·그래프 영역의 배경: 연한 색으로 채운 둥근 사각형.
+<!-- 비주얼라이저·그래프 영역의 배경: 표면색으로 채운 둥근 사각형.
      (와이어프레임의 점선 테두리는 "Custom View 자리"라는 표시라서 따라 하지 않고 연한 배경으로 영역만 구분) -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <corners android:radius="16dp" />
-    <!-- colorSurfaceContainer: 화면 배경보다 살짝 진한 Material 색 (다크 모드에서는 살짝 밝은 색) -->
-    <solid android:color="?attr/colorSurfaceContainer" />
+    <!-- bal_surface: 화면 배경(bal_background)보다 살짝 진한 베이지 녹색 -->
+    <solid android:color="@color/bal_surface" />
 </shape>

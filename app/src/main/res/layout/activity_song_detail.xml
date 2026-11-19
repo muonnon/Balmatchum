@@ -6,11 +6,17 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bal_primary_dark"
     android:fitsSystemWindows="true">
+    <!-- 바깥 FrameLayout 배경 = 진한 녹색(bal_primary_dark).
+         fitsSystemWindows 때문에 이 FrameLayout은 상태바·내비게이션바 높이만큼 안쪽 여백을 가져요.
+         Android 15+에서는 앱이 상태바 뒤까지 그려지므로, 그 여백 부분에 이 배경색이 보여서 "상태바 색"이 돼요. -->
 
+<!-- 안쪽 내용 전체의 배경 = 화면 배경색(아이보리) -->
 <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bal_background"
     android:orientation="vertical">
 
     <!-- 1. 공통 상단 바: 뒤로가기(<) + 곡 제목 (자바 코드에서 설정) -->
@@ -31,7 +37,7 @@
             android:id="@+id/tvDate"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textColor="@color/bal_text_sub"
             android:textSize="13sp" />
 
         <!-- 3. BPM 그래프 영역: 남는 세로 공간 차지(weight=1), 최소 200dp.
@@ -59,7 +65,7 @@
                 android:layout_marginTop="4dp"
                 android:gravity="center"
                 android:text="BPM 변화 그래프 (가로: 시간, 세로: BPM)"
-                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textColor="@color/bal_text_sub"
                 android:textSize="12sp" />
         </LinearLayout>
 
@@ -70,12 +76,17 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp" />
 
-        <!-- 5. 재생 막대. 끌어서 원하는 위치로 옮길 수 있음 -->
+        <!-- 5. 재생 막대. 끌어서 원하는 위치로 옮길 수 있음.
+             막대 색: progressTint = 채워진 부분(주 색), progressBackgroundTint = 빈 부분(보조 글자색. SeekBar가 빈 부분을 자동으로 반투명하게 그려서 실제로는 연한 회녹색으로 보임),
+                      thumbTint = 끌 수 있는 동그라미(주 색) -->
         <SeekBar
             android:id="@+id/seek"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp" />
+            android:layout_marginTop="12dp"
+            android:progressBackgroundTint="@color/bal_text_sub"
+            android:progressTint="@color/bal_primary"
+            android:thumbTint="@color/bal_primary" />
 
         <!-- 막대 아래: 왼쪽 현재 재생 시간, 오른쪽 전체 길이 -->
         <LinearLayout
@@ -89,7 +100,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="00:00"
-                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textColor="@color/bal_text_sub"
                 android:textSize="12sp" />
 
             <TextView
@@ -97,7 +108,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="00:00"
-                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textColor="@color/bal_text_sub"
                 android:textSize="12sp" />
         </LinearLayout>
 
@@ -108,7 +119,9 @@
             android:layout_marginTop="12dp"
             android:orientation="horizontal">
 
-            <!-- [다시 듣기 / 일시정지]: 남는 너비 전부, 높이 56dp, 알약 모양(cornerRadius 28dp = 높이 절반), 강조색(기본 버튼) -->
+            <!-- [다시 듣기 / 일시정지]: 남는 너비 전부, 높이 56dp, 알약 모양(cornerRadius 28dp = 높이 절반), 주 색(기본 버튼).
+                 backgroundTint: 평소 주 색, 누르는 동안 진한 녹색 (res/color/btn_primary_bg.xml)
+                 textColor     : 녹색 위 글자라서 흰색 -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnPlay"
                 android:layout_width="0dp"
@@ -117,11 +130,16 @@
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 android:text="다시 듣기"
+                android:textColor="@color/white"
                 android:textSize="17sp"
                 android:textStyle="bold"
+                app:backgroundTint="@color/btn_primary_bg"
                 app:cornerRadius="28dp" />
 
-            <!-- [삭제]: 너비 96dp, 테두리만 있는 알약 (OutlinedButton 스타일) -->
+            <!-- [삭제]: 너비 96dp, 테두리만 있는 알약 (OutlinedButton 스타일).
+                 지우는 동작이라 강조 색(bal_accent, 테라코타)으로 글자와 테두리를 칠해서 주의를 끌게 함.
+                 배경이 투명한 버튼이라 흰 글자 대신 강조 색 글자를 씀 (흰 글자는 아이보리 배경에 묻힘)
+                 strokeColor: 테두리 색, rippleColor: 누를 때 퍼지는 물결 효과 색 -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnDelete"
                 style="@style/Widget.Material3.Button.OutlinedButton"
@@ -131,9 +149,12 @@
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 android:text="삭제"
+                android:textColor="@color/bal_accent"
                 android:textSize="17sp"
                 android:textStyle="bold"
-                app:cornerRadius="28dp" />
+                app:cornerRadius="28dp"
+                app:rippleColor="@color/bal_accent"
+                app:strokeColor="@color/bal_accent" />
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

@@ -1,8 +1,65 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.Balmatchum" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+    <!-- 앱 기본 테마.
+         parent를 DayNight가 아니라 Light로 둔 이유: 우리 팔레트(colors.xml)는 밝은 배경 전용이라서,
+         다크 모드에서 Material 기본 어두운 색이 섞이면 글자가 배경에 묻혀요. 그래서 항상 밝은 테마를 써요.
+         (같은 이유로 다크 모드 전용 테마 파일 values-night/themes.xml은 지웠어요.
+          그 파일이 없으면 다크 모드에서도 이 파일의 테마가 그대로 쓰여요.)
+
+         아래 item들은 Material 위젯(버튼, 라디오, 대화상자, Spinner 등)이 "자동으로" 가져다 쓰는 색 칸이에요.
+         레이아웃에서 색을 따로 적지 않은 곳(대화상자, Spinner 글자 등)도 여기 덕분에 팔레트 색이 돼요. -->
+    <style name="Base.Theme.Balmatchum" parent="Theme.Material3.Light.NoActionBar">
+        <!-- 주 색: 기본 버튼 배경, 대화상자의 [확인]/[취소] 글자, 라디오·스위치 선택 색 등 -->
+        <item name="colorPrimary">@color/bal_primary</item>
+        <!-- 주 색 위에 올라가는 글자/아이콘 색 (녹색 버튼 위 글자 → 흰색) -->
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/bal_surface</item>
+        <item name="colorOnPrimaryContainer">@color/bal_text</item>
+
+        <!-- 보조 색 -->
+        <item name="colorSecondary">@color/bal_secondary</item>
+        <item name="colorOnSecondary">@color/bal_text</item>
+        <item name="colorSecondaryContainer">@color/bal_surface</item>
+        <item name="colorOnSecondaryContainer">@color/bal_text</item>
+
+        <!-- 강조 색(Material에서는 tertiary = 세 번째 색) -->
+        <item name="colorTertiary">@color/bal_accent</item>
+        <item name="colorOnTertiary">@color/white</item>
+        <!-- 오류 색도 강조 색으로 통일 -->
+        <item name="colorError">@color/bal_accent</item>
+        <item name="colorOnError">@color/white</item>
+
+        <!-- 화면 배경. android:windowBackground = 화면이 열릴 때 내용보다 먼저 보이는 창 바탕 -->
+        <item name="android:colorBackground">@color/bal_background</item>
+        <item name="android:windowBackground">@color/bal_background</item>
+        <item name="colorOnBackground">@color/bal_text</item>
+
+        <!-- 표면(Surface) 계열: 대화상자, Spinner 펼침 목록 등 Material 위젯의 바탕색 -->
+        <item name="colorSurface">@color/bal_background</item>
+        <item name="colorOnSurface">@color/bal_text</item>
+        <item name="colorOnSurfaceVariant">@color/bal_text_sub</item>
+        <item name="colorSurfaceContainerLowest">@color/bal_background</item>
+        <item name="colorSurfaceContainerLow">@color/bal_background</item>
+        <item name="colorSurfaceContainer">@color/bal_surface</item>
+        <!-- Material 대화상자 계열이 배경으로 쓰는 칸 → 아이보리 배경
+             (참고: 지금 쓰는 androidx AlertDialog는 이 값과 상관없이 흰 배경으로 나옴. 글자는 잘 보여서 그대로 둠) -->
+        <item name="colorSurfaceContainerHigh">@color/bal_background</item>
+        <item name="colorSurfaceContainerHighest">@color/bal_surface</item>
+
+        <!-- 테두리 색 -->
+        <item name="colorOutline">@color/bal_outline</item>
+        <item name="colorOutlineVariant">@color/bal_outline</item>
+
+        <!-- 따로 textColor를 적지 않은 글자(Spinner 항목, 대화상자 본문 등)의 기본 색 -->
+        <item name="android:textColorPrimary">@color/bal_text</item>
+        <item name="android:textColorSecondary">@color/bal_text_sub</item>
+
+        <!-- 상태바 색 (Android 14 이하에서만 적용됨).
+             Android 15(API 35)+에서는 앱이 상태바 뒤까지 그려지므로 이 값이 무시돼요.
+             그래서 각 화면 레이아웃의 바깥 FrameLayout 배경을 bal_primary_dark로 칠해서 같은 효과를 내요. -->
+        <item name="android:statusBarColor">@color/bal_primary_dark</item>
+        <item name="android:navigationBarColor">@color/bal_primary_dark</item>
+        <!-- false = 상태바 아이콘(시계, 배터리)을 흰색으로. 진한 녹색 위에서 잘 보이게 -->
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 
     <style name="Theme.Balmatchum" parent="Base.Theme.Balmatchum" />

@@ -1,5 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 앱 전체 색상 팔레트: "러닝 + 밝은 빈티지 녹색".
+     레이아웃·drawable·테마·자바 코드는 #RRGGBB를 직접 쓰지 않고 여기 이름(@color/bal_xxx)만 참조해요.
+     → 색을 바꾸고 싶으면 이 파일의 값만 고치면 앱 전체가 한꺼번에 바뀌어요.
+     자바 코드에서는 ContextCompat.getColor(context, R.color.bal_xxx)로 꺼내 써요. -->
 <resources>
-    <color name="black">#FF000000</color>
+    <!-- 주 색(진한 녹색): 상단 바(Toolbar) 배경, 주 버튼(시작/다시 듣기) 배경, 선택된 하단 탭 칸,
+         비주얼라이저 가운데 점, BPM 그래프 선, 라디오·스위치·막대(SeekBar)의 켜진 색 -->
+    <color name="bal_primary">#4F7F47</color>
+
+    <!-- 주 색보다 더 진한 녹색: 상태바 영역, 버튼을 누르고 있을 때(눌림 상태), 상단 바 아래 구분선 -->
+    <color name="bal_primary_dark">#386134</color>
+
+    <!-- 보조 색(연한 올리브 녹색): 비주얼라이저의 퍼지는 파동 링, BPM 그래프 선 아래 채우기(보조색),
+         켜진 스위치의 트랙(막대 부분) -->
+    <color name="bal_secondary">#A9BF7A</color>
+
+    <!-- 화면 배경(따뜻한 아이보리): 모든 화면의 바탕, 대화상자 배경, 곡 카드 안 아이콘 상자 -->
+    <color name="bal_background">#F8F4E3</color>
+
+    <!-- 표면 색(연한 베이지 녹색): 카드(곡 목록), 패널(비주얼라이저·그래프 영역), 통계 타일, 칩, 하단 탭 바, 정렬·스케일 선택 상자 -->
+    <color name="bal_surface">#ECEBCF</color>
+
+    <!-- 테두리·격자 색(bal_surface보다 약간 어두운 색): 카드·칩·타일 테두리, 화면 구분선,
+         BPM 그래프 격자선, 비주얼라이저 안내 동심원 -->
+    <color name="bal_outline">#D5D3AE</color>
+
+    <!-- 본문 글자(거의 검은 올리브색): 배경·카드 위의 일반 글자, 큰 BPM 숫자, 제목 -->
+    <color name="bal_text">#2B2E24</color>
+
+    <!-- 보조 글자(회갈색): 설명 글, 날짜, 타일 라벨, 선택 안 된 하단 탭, 그래프 BPM 숫자, 막대(SeekBar)의 빈 부분, 꺼진 스위치 트랙 -->
+    <color name="bal_text_sub">#6B705C</color>
+
+    <!-- 강조 색(테라코타 주황): 걷는 중 표시(비주얼라이저), 삭제 버튼, 그래프의 재생 위치 막대, 오류 색 -->
+    <color name="bal_accent">#D07A4A</color>
+
+    <!-- 흰색: 녹색 배경(상단 바, 주 버튼, 선택된 하단 탭) 위의 글자와 아이콘 -->
     <color name="white">#FFFFFFFF</color>
 </resources>

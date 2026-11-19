@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 주 버튼(시작/정지, 다시 듣기/일시정지)의 배경색 (MaterialButton의 app:backgroundTint에 사용).
+     - 누르고 있는 동안(state_pressed): 더 진한 녹색 → 눌렸다는 느낌
+     - 평소: 주 색
+     버튼 위 글자는 레이아웃에서 흰색(@color/white)으로 지정 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/bal_primary_dark" android:state_pressed="true" />
+    <item android:color="@color/bal_primary" />
+</selector>

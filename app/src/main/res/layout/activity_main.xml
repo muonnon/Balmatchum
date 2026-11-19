@@ -7,11 +7,17 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bal_primary_dark"
     android:fitsSystemWindows="true">
+    <!-- 바깥 FrameLayout 배경 = 진한 녹색(bal_primary_dark).
+         fitsSystemWindows 때문에 이 FrameLayout은 상태바·내비게이션바 높이만큼 안쪽 여백을 가져요.
+         Android 15+에서는 앱이 상태바 뒤까지 그려지므로, 그 여백 부분에 이 배경색이 보여서 "상태바 색"이 돼요. -->
 
+<!-- 안쪽 내용 전체의 배경 = 화면 배경색(아이보리) -->
 <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bal_background"
     android:orientation="vertical">
 
     <!-- 1. 공통 상단 바 ("발맞춤") -->
@@ -43,6 +49,7 @@
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
                 android:text="테마 · 8bit"
+                android:textColor="@color/bal_text"
                 android:textSize="13sp" />
 
             <TextView
@@ -55,6 +62,7 @@
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
                 android:text="스케일 · 펜타토닉"
+                android:textColor="@color/bal_text"
                 android:textSize="13sp" />
         </LinearLayout>
 
@@ -68,7 +76,8 @@
             android:layout_weight="1"
             android:background="@drawable/bg_panel" />
 
-        <!-- 4. 큰 BPM 숫자 (72sp 굵게). includeFontPadding=false: 큰 글자 위아래의 쓸데없는 여백을 줄임 -->
+        <!-- 4. 큰 BPM 숫자 (72sp 굵게). includeFontPadding=false: 큰 글자 위아래의 쓸데없는 여백을 줄임.
+             글자색은 본문색(bal_text): 아이보리 배경 위에서 가장 또렷하게 보이는 색 -->
         <TextView
             android:id="@+id/tvBpm"
             android:layout_width="match_parent"
@@ -77,6 +86,7 @@
             android:gravity="center"
             android:includeFontPadding="false"
             android:text="0"
+            android:textColor="@color/bal_text"
             android:textSize="72sp"
             android:textStyle="bold" />
 
@@ -87,7 +97,7 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:text="시작을 눌러 걸어 보세요"
-            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textColor="@color/bal_text_sub"
             android:textSize="14sp" />
 
         <!-- 5. 통계 타일 3개 (걸은 시간 / 걸음 수 / 평균 BPM) - 곡 상세와 같은 레이아웃을 include -->
@@ -99,7 +109,8 @@
 
         <!-- 걸음 시뮬레이션 버튼: 걸음 센서가 없는 기기(에뮬레이터)에서만 자바 코드가 보이게 바꿈.
              visibility="gone": 기본은 숨김 + 자리도 차지하지 않음
-             TextButton 스타일: 테두리·배경 없는 작은 글자 버튼 -->
+             TextButton 스타일: 테두리·배경 없는 작은 글자 버튼.
+             배경이 없어서 흰 글자는 안 보이므로, 글자를 주 색(녹색)으로 칠해 "누를 수 있는 글자"임을 보여줌 -->
         <Button
             android:id="@+id/btnSim"
             style="@style/Widget.Material3.Button.TextButton"
@@ -108,11 +119,14 @@
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="4dp"
             android:text="걸음 시뮬레이션"
+            android:textColor="@color/bal_primary"
             android:visibility="gone" />
 
         <!-- 6. 시작/정지 버튼: 가로 가득, 높이 64dp, 완전히 둥근 알약(cornerRadius = 높이의 절반 32dp), 20sp 굵게.
              MaterialButton(Material 테마의 Button)은 cornerRadius로 모서리를 둥글게 할 수 있음.
-             insetTop/Bottom=0: Material 버튼 위아래에 자동으로 붙는 작은 여백을 없애서 정확히 64dp가 되게 -->
+             insetTop/Bottom=0: Material 버튼 위아래에 자동으로 붙는 작은 여백을 없애서 정확히 64dp가 되게.
+             backgroundTint: 배경색. res/color/btn_primary_bg.xml이 평소엔 주 색, 누르는 동안엔 진한 녹색으로 바꿔 줌
+             textColor     : 녹색 버튼 위 글자라서 흰색 -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnStart"
             android:layout_width="match_parent"
@@ -122,7 +136,9 @@
             android:insetBottom="0dp"
             android:text="시작"
             android:textSize="20sp"
+            android:textColor="@color/white"
             android:textStyle="bold"
+            app:backgroundTint="@color/btn_primary_bg"
             app:cornerRadius="32dp" />
     </LinearLayout>
 
