@@ -156,6 +156,26 @@
                 app:rippleColor="@color/bal_accent"
                 app:strokeColor="@color/bal_accent" />
         </LinearLayout>
+
+        <!-- 7. [내보내기 (WAV)]: 곡을 WAV 파일로 만들어 다운로드 폴더에 저장하고 공유할 수 있게 함.
+             위 두 버튼과 같은 알약 모양(cornerRadius = 높이 절반 24dp)의 테두리 버튼(OutlinedButton).
+             주 버튼([다시 듣기])보다 덜 눈에 띄게 테두리만 칠하고, 글자·테두리는 주 색(녹색)
+             (배경이 투명한 버튼이라 흰 글자는 아이보리 배경에 묻힘 → 녹색 글자) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnExport"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="10dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:text="내보내기 (WAV)"
+            android:textColor="@color/bal_primary"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            app:cornerRadius="24dp"
+            app:rippleColor="@color/bal_secondary"
+            app:strokeColor="@color/bal_primary" />
     </LinearLayout>
 </LinearLayout>
 </FrameLayout>

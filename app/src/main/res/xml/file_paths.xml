@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider가 다른 앱에 건네줄 수 있는 폴더 목록.
+     cache-path: 앱의 캐시 폴더(getCacheDir()) 안. path="exports/" → 캐시/exports 폴더만 공유 가능
+     (앱의 다른 파일, 예를 들어 DB는 공유되지 않음)
+     name: content:// 주소에 들어가는 폴더 별명 → content://<패키지>.fileprovider/exports/파일명.wav -->
+<paths>
+    <cache-path
+        name="exports"
+        path="exports/" />
+</paths>

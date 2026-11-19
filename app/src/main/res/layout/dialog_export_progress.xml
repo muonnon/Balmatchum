@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 내보내기 진행 대화상자 안의 내용: 안내 글자 + 진행 막대.
+     대화상자 제목과 [취소] 버튼은 자바 코드(AlertDialog.Builder)에서 붙임 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="24dp"
+    android:paddingBottom="8dp">
+
+    <!-- 진행 상황 글자 (예: "곡을 만드는 중… 42%"). 자바 코드에서 계속 바꿈 -->
+    <TextView
+        android:id="@+id/tvExportStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="곡을 만드는 중… 0%"
+        android:textColor="@color/bal_text"
+        android:textSize="15sp" />
+
+    <!-- LinearProgressIndicator: Material의 가로 진행 막대.
+         max=100 → 0 ~ 100(%)으로 채움. indicatorColor = 채워진 부분(주 색), trackColor = 빈 부분(테두리 색)
+         trackCornerRadius: 막대 양 끝을 둥글게 (알약 모양 버튼들과 어울리게) -->
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/progressExport"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:max="100"
+        app:indicatorColor="@color/bal_primary"
+        app:trackColor="@color/bal_outline"
+        app:trackCornerRadius="4dp"
+        app:trackThickness="8dp" />
+</LinearLayout>

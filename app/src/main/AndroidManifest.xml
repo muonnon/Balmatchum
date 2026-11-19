@@ -33,6 +33,21 @@
         <activity
             android:name=".SettingsActivity"
             android:exported="false" />
+
+        <!-- FileProvider: 앱 안의 파일(내보낸 WAV)을 다른 앱(카카오톡, 드라이브 등)에 안전하게 건네주는 통로.
+             파일 경로를 그대로 주면 다른 앱이 읽을 수 없어서(보안), content:// 주소로 바꿔서 줌.
+             authorities  : 이 통로의 이름. 앱마다 달라야 해서 패키지 이름(applicationId)을 붙임
+             exported=false + grantUriPermissions=true : 아무나 열 수는 없고, 공유할 때 허락한 파일만 읽게 함
+             meta-data    : 어느 폴더의 파일을 건넬 수 있는지 (res/xml/file_paths.xml) -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

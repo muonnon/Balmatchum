@@ -1,7 +1,19 @@
 package com.example.balmatchum;
 
+import android.content.ActivityNotFoundException;   // 공유를 받을 앱이 없을 때 나는 오류
+import android.content.ClipData;
+import android.content.Context;                  // 앱 정보 (리소스, 캐시 폴더 등)                // 공유할 파일 주소를 Intent에 함께 담는 상자 (읽기 권한 전달용)
+import android.content.ContentResolver;         // MediaStore(공용 저장소)에 파일을 만들고 쓰는 도구
+import android.content.ContentValues;           // "열 이름 → 값" 묶음 (MediaStore에 넣을 파일 정보)
+import android.content.Intent;
 import android.database.Cursor;                 // DB 조회 결과를 한 줄씩 읽는 객체
+import android.net.Uri;                         // content://… 형태의 파일 주소
+import android.os.Build;                        // 안드로이드 버전 확인
 import android.os.Bundle;                       // 화면이 다시 만들어질 때 저장해 둔 값을 담는 상자
+import android.os.Environment;                  // "Download" 같은 표준 폴더 이름
+import android.provider.MediaStore;
+import android.util.Log;             // 다운로드·음악 등 공용 저장소
+import android.view.View;
 import android.os.Handler;                      // "나중에(예: 0.1초 뒤) 이 일을 해 줘"라고 예약하는 도구
 import android.os.Looper;                       // Handler가 어느 스레드에서 일할지 정할 때 사용 (메인 = 화면 스레드)
 import android.widget.Button;
@@ -9,13 +21,25 @@ import android.widget.SeekBar;                  // 끌어서 위치를 바꾸는
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.RequiresApi;         // "이 메서드는 안드로이드 몇 버전 이상에서만 부르세요" 표시
 import androidx.appcompat.app.AlertDialog;      // "삭제할까요?" 확인 창
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;      // 앱 파일을 다른 앱에 content:// 주소로 건네는 도구
+
+import com.google.android.material.progressindicator.LinearProgressIndicator;   // 가로 진행 막대
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InterruptedIOException;          // 내보내기를 [취소]했을 때 렌더러가 던지는 예외
+import java.io.OutputStream;
 
 import java.text.SimpleDateFormat;              // 날짜를 글자로 바꾸는 도구
 import java.util.Arrays;                        // 배열 도우미 (배열 길이 자르기에 사용)
 import java.util.Date;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicBoolean;   // 두 스레드가 안전하게 함께 보는 true/false (취소 신호)
 
 /**
  * 곡 상세 화면.
@@ -28,6 +52,7 @@ import java.util.Locale;
  *  - 통계 타일 3개: 걸은 시간 / 걸음 수 / 평균 BPM
  *  - 진행 SeekBar + 왼쪽 현재 시간 / 오른쪽 전체 길이
  *  - [다시 듣기 / 일시정지] 버튼, [삭제] 버튼
+ *  - [내보내기 (WAV)] 버튼: 곡을 WAV 파일로 만들어 다운로드/Balmatchum 폴더에 저장하고 공유
  *
  * 다시 듣기 원리:
  *  DB의 seed(멜로디 시드)와 bpm_series(걸음마다의 BPM)를 MusicEngine.loadReplay()에 넣으면,
@@ -56,6 +81,27 @@ public class SongDetailActivity extends AppCompatActivity {
     private int songScaleId, songThemeId;
     private boolean songBeatOn;
     private long totalMs;                // 다시 듣기 전체 길이 (bpm_series로 계산한 값)
+
+    // 내보내기에 필요한 곡 정보 (loadSong에서 채움)
+    private long songSeed;               // 멜로디 시드
+    private int[] songSeries;            // 걸음마다의 BPM
+    private int songMelodyVersion;       // 멜로디 알고리즘 버전 (옛 곡 0, 새 곡 1)
+    private long songStartedAt;          // 걷기 시작 시각 (파일 이름에 사용)
+    private int songAvgBpm;              // 평균 BPM (파일 이름에 사용)
+
+    // ── 내보내기 상태 ──
+    // 취소 신호. [취소]를 누르거나 화면이 닫히면 true → 렌더링 스레드가 보고 멈춤
+    private final AtomicBoolean exportCancel = new AtomicBoolean(false);
+    private Thread exportThread;                     // 렌더링 중인 백그라운드 스레드 (없으면 null)
+    private AlertDialog exportDialog;                // 진행 대화상자
+    private TextView tvExportStatus;                 // 대화상자 안 글자
+    private LinearProgressIndicator progressExport;  // 대화상자 안 진행 막대
+    private int lastExportPercent = -1;              // 마지막으로 화면에 보여준 % (같은 값이면 다시 그리지 않음)
+
+    // FileProvider 이름 (AndroidManifest의 authorities와 같아야 함)
+    private static final String FILE_AUTHORITY_SUFFIX = ".fileprovider";
+    // 다운로드 폴더 안에 만들 하위 폴더
+    private static final String EXPORT_FOLDER = "Balmatchum";
 
     private boolean userSeeking = false;     // 사용자가 SeekBar를 손으로 끌고 있는 중인지
     private boolean wasPlayingBeforeSeek;    // 끌기 시작할 때 재생 중이었는지 (놓으면 다시 재생하려고)
@@ -111,6 +157,7 @@ public class SongDetailActivity extends AppCompatActivity {
 
         btnPlay.setOnClickListener(v -> onPlayClicked());
         findViewById(R.id.btnDelete).setOnClickListener(v -> confirmDelete());
+        findViewById(R.id.btnExport).setOnClickListener(v -> startExport());
 
         // ── SeekBar 동작 ──
         // OnSeekBarChangeListener는 메서드 3개를 모두 적어야 하는 인터페이스예요.
@@ -184,6 +231,9 @@ public class SongDetailActivity extends AppCompatActivity {
      */
     @Override protected void onDestroy() {
         super.onDestroy();
+        // 내보내기 중에 화면이 닫히면 작업을 취소 (렌더링 스레드가 취소 신호를 보고 멈추고, 만들다 만 파일을 지움)
+        exportCancel.set(true);
+        if (exportDialog != null) exportDialog.dismiss();
         handler.removeCallbacks(progressUpdater);
         engine.release();
         dbHelper.close();
@@ -217,6 +267,11 @@ public class SongDetailActivity extends AppCompatActivity {
             songBeatOn = c.getInt(c.getColumnIndexOrThrow("beat_on")) == 1;   // 1 → true, 0 → false
             // DB 버전 3에서 추가된 열. 업데이트 전에 저장된 곡은 0(옛 알고리즘), 새 곡은 1
             int melodyVersion = c.getInt(c.getColumnIndexOrThrow("melody_version"));
+            // 내보내기용으로 기억
+            songSeed = seed;
+            songMelodyVersion = melodyVersion;
+            songStartedAt = startedAt;
+            songAvgBpm = avgBpm;
 
             // ── 글자 채우기 ──
             // 상단 바: 뒤로가기(<) 화살표 + 곡 제목. 화살표를 누르면 finish() → 목록으로
@@ -237,6 +292,7 @@ public class SongDetailActivity extends AppCompatActivity {
 
             // ── 그래프와 엔진 준비 ──
             int[] series = parseSeries(seriesText);
+            songSeries = series;
             graph.setData(series);
             // 순서 중요: 스케일을 먼저 정해야 loadReplay가 그 스케일에 맞는 시작 음 위치로 되감아요.
             // (반대로 하면 이전 스케일 기준으로 시작 위치가 정해져서 멜로디가 달라질 수 있음)
@@ -252,6 +308,7 @@ public class SongDetailActivity extends AppCompatActivity {
             if (series.length == 0) {
                 btnPlay.setEnabled(false);
                 seek.setEnabled(false);
+                findViewById(R.id.btnExport).setEnabled(false);   // 만들 소리가 없으니 내보내기도 끔
             }
             return true;
         } finally {
@@ -370,5 +427,198 @@ public class SongDetailActivity extends AppCompatActivity {
                 })
                 .setNegativeButton("취소", null)
                 .show();
+    }
+
+    // ───────────────────────────── 내보내기 (WAV) ─────────────────────────────
+
+    /**
+     * [내보내기 (WAV)] 버튼을 눌렀을 때.
+     * 진행 대화상자를 띄우고, 백그라운드 스레드에서 곡을 WAV로 만든 뒤 다운로드 폴더에 저장해요.
+     *
+     * 왜 백그라운드 스레드?
+     *  렌더링은 몇 초 걸릴 수 있어요. 화면(메인) 스레드에서 하면 그동안 화면이 멈추고,
+     *  5초 이상 멈추면 안드로이드가 "앱이 응답하지 않음" 창을 띄워요.
+     *  그래서 계산은 다른 스레드에서 하고, 화면 바꾸기(진행 막대 등)만 handler.post로 메인 스레드에 맡겨요.
+     */
+    private void startExport() {
+        if (exportThread != null) return;              // 이미 내보내는 중이면 무시 (두 번 눌러도 하나만)
+        if (songSeries == null || songSeries.length == 0) return;
+
+        // ── 진행 대화상자 ──
+        View content = getLayoutInflater().inflate(R.layout.dialog_export_progress, null);
+        tvExportStatus = content.findViewById(R.id.tvExportStatus);
+        progressExport = content.findViewById(R.id.progressExport);
+        lastExportPercent = -1;
+        exportDialog = new AlertDialog.Builder(this)
+                .setTitle("내보내기")
+                .setView(content)
+                // [취소]: 취소 신호만 보내요. 스레드가 신호를 보고 멈춘 뒤 대화상자를 닫고 안내해요.
+                .setNegativeButton("취소", (d, w) -> exportCancel.set(true))
+                .setCancelable(false)                  // 바깥을 눌러도 닫히지 않게 (취소는 버튼으로만)
+                .show();
+
+        // 스레드에 넘길 값들을 지금 정해 둠 (스레드가 화면 필드를 직접 건드리지 않게)
+        exportCancel.set(false);
+        final SongRenderer.Song song = new SongRenderer.Song(songSeed, songSeries,
+                songScaleId, songThemeId, songBeatOn, songMelodyVersion);
+        final String fileName = exportFileName();
+        // getApplicationContext(): 화면(Activity) 대신 앱 전체의 Context를 넘김.
+        // 스레드가 화면을 붙잡고 있으면, 화면이 닫혀도 메모리에서 사라지지 못해요(메모리 누수).
+        final Context app = getApplicationContext();
+
+        exportThread = new Thread(() -> {
+            File out = null;
+            try {
+                out = prepareExportFile(app, fileName);
+                // 렌더링 + WAV 쓰기 (진행률은 메인 스레드로 보내서 막대를 움직임)
+                SongRenderer.renderToFile(app, song, out,
+                        f -> handler.post(() -> showExportProgress(f)), exportCancel);
+
+                // Android 10(API 29) 이상: 다운로드/Balmatchum에 복사 → 파일 앱에서 바로 보임
+                String savedName = null;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) savedName = copyToDownloads(app, out, fileName);
+
+                final File done = out;
+                final String name = savedName;
+                handler.post(() -> onExportDone(done, name));
+            } catch (InterruptedIOException e) {
+                // [취소] 또는 화면 닫힘 → 조용히 정리 (렌더러가 만들다 만 파일은 이미 지움)
+                handler.post(() -> onExportFinished("내보내기를 취소했어요"));
+            } catch (IOException | RuntimeException e) {
+                // 소리 파일 읽기 실패, 저장 공간 부족, 다운로드 폴더 쓰기 실패 등 → 이유를 토스트로
+                Log.e("BAL", "내보내기 실패", e);
+                if (out != null && out.exists() && !out.delete()) Log.w("BAL", "파일 삭제 실패: " + out);
+                final String reason = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                handler.post(() -> onExportFinished("내보내기 실패: " + reason));
+            }
+        }, "bal-export");   // 스레드 이름 (디버깅할 때 알아보기 쉽게)
+        exportThread.start();
+    }
+
+    /**
+     * 파일 이름: balmatchum_yyyyMMdd_HHmm_BPM평균.wav (예: balmatchum_20261119_1305_BPM108.wav)
+     * 다른 앱·기기로 옮겨도 깨지지 않게 영어·숫자(ASCII)만 써요. Locale.US: 어느 나라 설정이든 숫자가 0~9로 나오게
+     */
+    private String exportFileName() {
+        String time = new SimpleDateFormat("yyyyMMdd_HHmm", Locale.US).format(new Date(songStartedAt));
+        return "balmatchum_" + time + "_BPM" + songAvgBpm + ".wav";
+    }
+
+    /**
+     * 캐시 폴더 안 exports 폴더에 만들 파일을 준비해요.
+     * 예전에 내보낸 파일은 지워요. (캐시에는 공유용으로 가장 최근 파일 하나만 있으면 충분 → 용량이 쌓이지 않게)
+     */
+    private static File prepareExportFile(Context app, String fileName) throws IOException {
+        File dir = new File(app.getCacheDir(), "exports");
+        if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("임시 폴더를 만들지 못했어요");
+        File[] old = dir.listFiles();
+        if (old != null) {
+            for (File f : old) {
+                if (!f.delete()) Log.w("BAL", "예전 내보내기 파일 삭제 실패: " + f);
+            }
+        }
+        return new File(dir, fileName);
+    }
+
+    /**
+     * Android 10 이상: 만든 WAV를 공용 "다운로드/Balmatchum" 폴더에 복사해요. 권한 요청이 필요 없어요.
+     * (MediaStore: 사진·음악·다운로드처럼 여러 앱이 함께 쓰는 저장소. 앱은 자기가 만든 파일은 권한 없이 쓸 수 있음)
+     *
+     * IS_PENDING = 1: "아직 쓰는 중"이라는 표시 → 다 쓰기 전에는 다른 앱에 보이지 않음. 다 쓰면 0으로 바꿈
+     *
+     * @return 실제로 저장된 파일 이름 (같은 이름이 있으면 시스템이 "이름 (1).wav"처럼 바꿀 수 있어서 다시 읽음)
+     */
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private static String copyToDownloads(Context app, File src, String fileName) throws IOException {
+        ContentResolver resolver = app.getContentResolver();
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName);
+        // MIME 타입: 파일 종류 이름표. 안드로이드가 확장자 .wav와 짝지어 아는 이름이 audio/x-wav
+        values.put(MediaStore.MediaColumns.MIME_TYPE, "audio/x-wav");
+        values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/" + EXPORT_FOLDER);
+        values.put(MediaStore.MediaColumns.IS_PENDING, 1);
+
+        Uri uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+        if (uri == null) throw new IOException("다운로드 폴더에 파일을 만들지 못했어요");
+        boolean ok = false;
+        try (InputStream in = new FileInputStream(src); OutputStream os = resolver.openOutputStream(uri)) {
+            if (os == null) throw new IOException("다운로드 폴더 파일을 열지 못했어요");
+            byte[] buf = new byte[64 * 1024];
+            int n;
+            while ((n = in.read(buf)) != -1) os.write(buf, 0, n);
+            ok = true;
+        } finally {
+            if (!ok) resolver.delete(uri, null, null);   // 실패하면 반쯤 쓴 파일이 남지 않게 지움
+        }
+        values.clear();
+        values.put(MediaStore.MediaColumns.IS_PENDING, 0);   // 다 썼으니 이제 다른 앱에도 보이게
+        resolver.update(uri, values, null, null);
+
+        // 실제 저장된 이름 읽기
+        try (Cursor c = resolver.query(uri, new String[]{MediaStore.MediaColumns.DISPLAY_NAME}, null, null, null)) {
+            if (c != null && c.moveToFirst()) return c.getString(0);
+        }
+        return fileName;
+    }
+
+    /** 진행률(0.0 ~ 1.0)을 대화상자에 표시. % 숫자가 바뀔 때만 다시 그림 (너무 자주 그리지 않게) */
+    private void showExportProgress(float fraction) {
+        int percent = Math.round(fraction * 100);
+        if (percent == lastExportPercent || exportDialog == null) return;
+        lastExportPercent = percent;
+        progressExport.setProgressCompat(percent, true);    // true: 막대가 부드럽게 움직임
+        tvExportStatus.setText("곡을 만드는 중… " + percent + "%");
+    }
+
+    /**
+     * 내보내기가 끝났을 때(취소·실패 포함) 정리하고 안내 문구를 토스트로 보여줘요.
+     * 화면이 이미 닫혔으면 대화상자나 토스트를 띄우지 않아요.
+     */
+    private void onExportFinished(String message) {
+        exportThread = null;
+        if (exportDialog != null) { exportDialog.dismiss(); exportDialog = null; }
+        if (isFinishing() || isDestroyed()) return;
+        if (message != null) Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+    }
+
+    /**
+     * 내보내기 성공: 저장 위치를 알려 주는 대화상자 + [공유] [닫기]
+     *
+     * @param file      캐시 폴더의 WAV (공유에 사용)
+     * @param savedName 다운로드 폴더에 저장된 이름. Android 9 이하는 null (다운로드 폴더에 저장하지 않음)
+     */
+    private void onExportDone(File file, String savedName) {
+        onExportFinished(null);
+        if (isFinishing() || isDestroyed()) return;
+        String message = savedName != null
+                ? "저장했어요: 다운로드/" + EXPORT_FOLDER + "/" + savedName
+                // Android 9 이하: 권한 없이 공용 폴더에 쓸 수 없어서, 공유 시트로 원하는 곳에 저장하게 함
+                : "곡 파일을 만들었어요: " + file.getName() + "\n[공유]를 눌러 원하는 앱이나 폴더에 저장하세요.";
+        new AlertDialog.Builder(this)
+                .setTitle("내보내기 완료")
+                .setMessage(message)
+                .setPositiveButton("공유", (d, w) -> shareFile(file))
+                .setNegativeButton("닫기", null)
+                .show();
+    }
+
+    /**
+     * 공유 시트(카카오톡, 드라이브, 메일 등 앱 고르기 창)를 열어 WAV를 보내요.
+     * FileProvider로 content:// 주소를 만들고, 받는 앱에 "이 파일 읽어도 돼" 권한(FLAG_GRANT_READ_URI_PERMISSION)을 줘요.
+     */
+    private void shareFile(File file) {
+        try {
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + FILE_AUTHORITY_SUFFIX, file);
+            Intent send = new Intent(Intent.ACTION_SEND)
+                    .setType("audio/wav")
+                    .putExtra(Intent.EXTRA_STREAM, uri)
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            // ClipData에도 주소를 넣어야 고르기 창(chooser)을 거쳐도 읽기 권한이 받는 앱까지 전달돼요
+            send.setClipData(ClipData.newRawUri(file.getName(), uri));
+            startActivity(Intent.createChooser(send, "걸음 곡 공유"));
+        } catch (IllegalArgumentException | ActivityNotFoundException e) {
+            // 파일이 공유 폴더 밖에 있거나, 공유를 받을 앱이 하나도 없을 때
+            Toast.makeText(this, "공유할 수 없어요: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
     }
 }
