@@ -62,6 +62,18 @@
 - 저장된 곡 목록 조회, 정렬, 삭제
 - 저장한 곡 정보로 같은 곡 다시 듣기
 
+### 📤 곡 내보내기 (WAV)
+- 곡 상세 화면의 **[내보내기 (WAV)]** 버튼으로 걸음 곡을 오디오 파일로 저장
+- 재생과 같은 계산 코드(`NoteSequencer`)로 만들어서, 앱에서 듣는 것과 같은 곡이 파일로 나옴 (옛 곡·새 곡 모두)
+- 진행률 표시와 **[취소]** 지원, 저장 후 **[공유]**로 다른 앱에 보내기
+
+| 항목 | 내용 |
+|------|------|
+| **파일 형식** | WAV, 22050Hz, 모노, 16bit PCM (5분 곡 약 13MB) |
+| **파일 이름** | `balmatchum_yyyyMMdd_HHmm_BPM평균.wav` (예: `balmatchum_20261119_1305_BPM108.wav`) |
+| **저장 위치** | Android 10 이상: `다운로드/Balmatchum` 폴더 (권한 요청 없음) / Android 9 이하: 앱 캐시에 만든 뒤 공유 시트로 원하는 곳에 저장 |
+| **소리** | 곡에 저장된 스케일·테마·비트를 그대로 반영, 설정의 볼륨과 관계없이 100%로 만듦. 끝에 1.5초 여운, 최댓값 0.95로 정규화 |
+
 ### 🎛️ 설정
 - 스케일(분위기) 선택
 - 사운드 테마 선택 (8bit, Lo-fi, 피아노)
@@ -84,6 +96,7 @@
 - [x] 새 소리 샘플 12개(VCSL, CC0) 추가와 테마별 소리 풀 (멜로디·베이스·리듬)
 - [x] 시드 기반 멜로디 생성 개선 (프레이즈 A A' B A' 반복, 4마디마다 바뀌는 코드 진행, 베이스, 걸음 속도별 리듬, 두 옥타브, 강약·쉼표)
 - [x] 옛 곡 호환 (DB v3 `melody_version`: 업데이트 전 곡은 옛 알고리즘과 옛 소리로 똑같이 재생)
+- [x] 곡 내보내기 (WAV 22050Hz 모노 16bit, `다운로드/Balmatchum`에 저장, 공유)
 
 ---
 
@@ -167,6 +180,7 @@
 3. 곡을 길게 누르면 삭제할 수 있습니다.
 4. 곡을 누르면 곡 상세 화면이 열립니다. BPM 변화 그래프를 보고, **[다시 듣기]**로 걸을 때와 같은 멜로디를 다시 들을 수 있습니다.
 5. 진행 막대를 끌어 원하는 위치부터 들을 수 있고, **[삭제]**로 곡을 지울 수 있습니다.
+6. **[내보내기 (WAV)]**를 누르면 곡을 WAV 파일로 만들어 `다운로드/Balmatchum` 폴더에 저장합니다. 완료 창의 **[공유]**로 메신저·드라이브 등에 보낼 수 있습니다.
 
 ### 4️⃣ 설정 바꾸기
 1. 하단 탭에서 **설정** 선택
@@ -234,10 +248,16 @@ Balmatchum/
 └── app/src/main/
     ├── java/com/example/balmatchum/
     │   ├── MainActivity.java     # 걷기 화면, 걸음 감지, BPM 계산
-    │   ├── MusicEngine.java      # SoundPool 기반 박자·멜로디 재생
+    │   ├── MusicEngine.java      # 실시간 재생: 칸마다 기다리며 NoteSequencer를 진행, SoundPool로 소리 냄
+    │   ├── NoteSequencer.java    # 곡 계산 (가상 시계, 옛/새 멜로디 알고리즘, 해시) - 재생·내보내기 공용
+    │   ├── NoteSink.java         # 음 신호 인터페이스 (SoundPoolSink = 재생, PcmMixSink = 내보내기 믹싱)
+    │   ├── SongComposer.java     # 새 곡(v1) 작곡기: 프레이즈·코드 진행·베이스·리듬
+    │   ├── SoundPalette.java     # 소리 파일 21개와 테마별 소리 풀 표
+    │   ├── SongRenderer.java     # 곡을 WAV로 렌더링 (샘플 디코딩·캐시, 믹싱, 정규화)
+    │   ├── WavIO.java            # WAV 읽기(data 청크 디코딩)·쓰기(44바이트 헤더)
     │   ├── SongDbHelper.java     # 걸음 곡·설정값 SQLite 저장·조회·삭제
     │   ├── SongListActivity.java # 걸음 곡 목록 화면 (정렬, 삭제)
-    │   ├── SongDetailActivity.java # 곡 상세 화면 (다시 듣기, 진행 막대, 삭제)
+    │   ├── SongDetailActivity.java # 곡 상세 화면 (다시 듣기, 진행 막대, 삭제, 내보내기·공유)
     │   ├── BpmGraphView.java     # BPM 변화 선 그래프 (Custom View, Canvas)
     │   ├── WalkVisualizerView.java # 걸음마다 원이 퍼지는 비주얼라이저 (Custom View, Canvas)
     │   ├── SettingsActivity.java # 설정 화면 (스케일, 테마, 볼륨, 스위치)
@@ -246,7 +266,8 @@ Balmatchum/
         ├── layout/               # 화면 레이아웃 (include_toolbar, include_bottom_nav, include_stat_tiles 공통 조각 포함)
         ├── menu/bottom_nav.xml   # 하단 탭 메뉴 (걷기 / 기록 / 설정)
         ├── drawable/             # 벡터 아이콘, 칩·카드·타일 배경
-        └── raw/                  # 소리 샘플 9개 (8bit: note/kick/hat, lofi_*, piano_*)
+        ├── xml/file_paths.xml    # 공유(FileProvider)할 수 있는 폴더 (캐시/exports)
+        └── raw/                  # 소리 샘플 21개 (기존 9개 + VCSL 12개, 리소스 출처 참고)
 ```
 
 ---
