@@ -2,7 +2,7 @@
 <!-- 스위치의 길쭉한 막대(track) 색 (SwitchCompat의 app:trackTint에 사용)
      - 켜짐: 연한 보조 녹색 → 진한 녹색 손잡이가 잘 보임
      - 꺼짐: 보조 글자색. SwitchCompat는 트랙을 자동으로 반투명하게 그려서 실제로는 연한 회녹색으로 보임.
-             (처음엔 테두리 색 bal_outline을 썼는데, 반투명해지니 아이보리 배경에 거의 묻혀서
+             (처음엔 테두리 색 bal_outline을 썼는데, 반투명해지니 밝은 배경에 거의 묻혀서
               꺼진 스위치가 잘 안 보였음 → 한 단계 진한 색으로 바꿈) -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:color="@color/bal_secondary" android:state_checked="true" />

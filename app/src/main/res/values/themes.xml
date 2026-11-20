@@ -40,7 +40,7 @@
         <item name="colorSurfaceContainerLowest">@color/bal_background</item>
         <item name="colorSurfaceContainerLow">@color/bal_background</item>
         <item name="colorSurfaceContainer">@color/bal_surface</item>
-        <!-- Material 대화상자 계열이 배경으로 쓰는 칸 → 아이보리 배경
+        <!-- Material 대화상자 계열이 배경으로 쓰는 칸 → 흰 배경
              (참고: 지금 쓰는 androidx AlertDialog는 이 값과 상관없이 흰 배경으로 나옴. 글자는 잘 보여서 그대로 둠) -->
         <item name="colorSurfaceContainerHigh">@color/bal_background</item>
         <item name="colorSurfaceContainerHighest">@color/bal_surface</item>

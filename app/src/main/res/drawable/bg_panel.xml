@@ -4,6 +4,6 @@
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <corners android:radius="16dp" />
-    <!-- bal_surface: 화면 배경(bal_background)보다 살짝 진한 베이지 녹색 -->
+    <!-- bal_surface: 화면 배경(bal_background)보다 살짝 진한 연한 회녹색 -->
     <solid android:color="@color/bal_surface" />
 </shape>

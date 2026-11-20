@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 스위치의 동그란 손잡이(thumb) 색 (SwitchCompat의 app:thumbTint에 사용)
      - 켜짐(state_checked): 주 색(녹색)
-     - 꺼짐: 아이보리 배경색 (회색 트랙 위에 밝은 동그라미) -->
+     - 꺼짐: 흰 배경색 (반투명한 회녹색 트랙 위에 흰 동그라미) -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:color="@color/bal_primary" android:state_checked="true" />
     <item android:color="@color/bal_background" />

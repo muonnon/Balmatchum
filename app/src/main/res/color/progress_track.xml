@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 내보내기 진행 막대(LinearProgressIndicator)의 "빈 부분(track)" 색 (app:trackColor에 사용).
+
+     왜 따로 만들었나?
+     - 처음엔 테두리 색(bal_outline)을 썼는데, 배경이 흰색으로 바뀐 뒤에는 너무 연해서 막대가 흐릿했어요.
+     - 그렇다고 보조 글자색(bal_text_sub)을 그대로 쓰면, 채워진 부분(bal_primary)과 진하기가 거의 같아서
+       "어디까지 찼는지"가 구분되지 않아요.
+     - 그래서 bal_text_sub를 45%만 불투명하게(= 55% 투명하게) 써요.
+       흰 배경과 섞이면 약 #B3B7AD(중간 회녹색)로 보여서, 흰 배경보다 확실히 진하고 채워진 부분보다는 확실히 연해요.
+       (30%로 해 봤더니 약 #CCCFC8이 되어 bal_outline과 밝기가 거의 같아서 여전히 흐릿했어요 → 45%로 올림)
+       설정·곡 상세 화면의 SeekBar 빈 부분도 bal_text_sub를 반투명하게 그리므로, 두 막대가 같은 계열의 색이 돼요.
+
+     android:alpha = 색의 불투명도 (0.0 = 완전 투명, 1.0 = 완전 불투명).
+     색 값 자체는 colors.xml의 이름(@color/bal_text_sub)만 참조하므로, 팔레트를 바꾸면 여기도 자동으로 따라가요. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:alpha="0.45" android:color="@color/bal_text_sub" />
+</selector>

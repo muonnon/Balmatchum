@@ -21,7 +21,9 @@
         android:textSize="15sp" />
 
     <!-- LinearProgressIndicator: Material의 가로 진행 막대.
-         max=100 → 0 ~ 100(%)으로 채움. indicatorColor = 채워진 부분(주 색), trackColor = 빈 부분(테두리 색)
+         max=100 → 0 ~ 100(%)으로 채움. indicatorColor = 채워진 부분(주 색),
+         trackColor = 빈 부분(res/color/progress_track.xml: 보조 글자색을 45%만 불투명하게.
+                      흰 배경에서 테두리 색은 너무 연해서 바꿨고, SeekBar의 빈 부분과 같은 느낌이 나요)
          trackCornerRadius: 막대 양 끝을 둥글게 (알약 모양 버튼들과 어울리게) -->
     <com.google.android.material.progressindicator.LinearProgressIndicator
         android:id="@+id/progressExport"
@@ -30,7 +32,7 @@
         android:layout_marginTop="16dp"
         android:max="100"
         app:indicatorColor="@color/bal_primary"
-        app:trackColor="@color/bal_outline"
+        app:trackColor="@color/progress_track"
         app:trackCornerRadius="4dp"
         app:trackThickness="8dp" />
 </LinearLayout>

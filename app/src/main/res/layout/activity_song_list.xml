@@ -10,7 +10,7 @@
          fitsSystemWindows 때문에 이 FrameLayout은 상태바·내비게이션바 높이만큼 안쪽 여백을 가져요.
          Android 15+에서는 앱이 상태바 뒤까지 그려지므로, 그 여백 부분에 이 배경색이 보여서 "상태바 색"이 돼요. -->
 
-<!-- 안쪽 내용 전체의 배경 = 화면 배경색(아이보리) -->
+<!-- 안쪽 내용 전체의 배경 = 화면 배경색(흰색) -->
 <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
