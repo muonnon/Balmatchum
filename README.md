@@ -115,16 +115,12 @@
 
 ## 📸 스크린샷
 
-> 📷 *스크린샷 추가 예정*
-
-<!--
 <div align="center">
-<img src="./screenshots/walk.png" width="22%" />
-<img src="./screenshots/list.png" width="22%" />
-<img src="./screenshots/detail.png" width="22%" />
-<img src="./screenshots/settings.png" width="22%" />
+<img src="./screenshots/walk.jpg" width="22%" />
+<img src="./screenshots/list.jpg" width="22%" />
+<img src="./screenshots/detail.jpg" width="22%" />
+<img src="./screenshots/settings.jpg" width="22%" />
 </div>
--->
 
 ---
 
